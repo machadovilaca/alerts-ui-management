@@ -23,13 +23,13 @@ func main() {
 
 	fmt.Println("Successfully connected to Kubernetes cluster!")
 
-	namespaces, err := client.Namespaces().GetNamespaces(ctx)
+	prs, err := client.PrometheusRules().List(ctx)
 	if err != nil {
-		log.Fatalf("Failed to list namespaces: %v", err)
+		log.Fatalf("Failed to list PrometheusRules: %v", err)
 	}
 
-	fmt.Printf("Found %d namespaces:\n", len(namespaces))
-	for _, ns := range namespaces {
-		fmt.Printf("  - %s\n", ns)
+	fmt.Printf("Found %d PrometheusRules:\n", len(prs))
+	for _, pr := range prs {
+		fmt.Printf("  - %s/%s\n", pr.Namespace, pr.Name)
 	}
 }

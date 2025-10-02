@@ -9,8 +9,8 @@ type Interface interface {
 	// TestConnection tests the connection to the Kubernetes cluster
 	TestConnection(ctx context.Context) error
 
-	// Namespaces returns the namespace interface
-	Namespaces() NamespaceInterface
+	// PrometheusRules returns the PrometheusRule interface
+	PrometheusRules() PrometheusRuleInterface
 }
 
 // Ensure Client implements Interface

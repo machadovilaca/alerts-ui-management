@@ -9,13 +9,17 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+
+	monitoringv1client "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 )
 
 // Client wraps the Kubernetes clientset and provides methods for cluster interaction
 type Client struct {
-	clientset        *kubernetes.Clientset
-	config           *rest.Config
-	namespaceManager NamespaceInterface
+	clientset             *kubernetes.Clientset
+	monitoringv1clientset *monitoringv1client.Clientset
+	config                *rest.Config
+
+	prometheusRuleManager PrometheusRuleInterface
 }
 
 // ClientOptions holds configuration options for creating a Kubernetes client
@@ -50,18 +54,24 @@ func NewClient(_ context.Context, opts ClientOptions) (Interface, error) {
 		return nil, fmt.Errorf("failed to create clientset: %w", err)
 	}
 
-	client := &Client{
-		clientset: clientset,
-		config:    config,
+	monitoringv1clientset, err := monitoringv1client.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create monitoringv1 clientset: %w", err)
 	}
 
-	client.namespaceManager = newNamespaceManager(clientset)
+	client := &Client{
+		clientset:             clientset,
+		monitoringv1clientset: monitoringv1clientset,
+		config:                config,
+	}
+
+	client.prometheusRuleManager = newPrometheusRuleManagerManager(monitoringv1clientset)
 
 	return client, nil
 }
 
 // TestConnection tests the connection to the Kubernetes cluster
-func (c *Client) TestConnection(ctx context.Context) error {
+func (c *Client) TestConnection(_ context.Context) error {
 	_, err := c.clientset.Discovery().ServerVersion()
 	if err != nil {
 		return fmt.Errorf("failed to connect to cluster: %w", err)
@@ -69,7 +79,7 @@ func (c *Client) TestConnection(ctx context.Context) error {
 	return nil
 }
 
-// Namespaces returns the namespace interface
-func (c *Client) Namespaces() NamespaceInterface {
-	return c.namespaceManager
+// PrometheusRules returns the PrometheusRule interface
+func (c *Client) PrometheusRules() PrometheusRuleInterface {
+	return c.prometheusRuleManager
 }
