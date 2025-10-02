@@ -3,9 +3,10 @@ package management
 import (
 	"context"
 
-	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
 )
 
 // MockK8sClient is a mock implementation of k8s.Client for testing
