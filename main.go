@@ -7,8 +7,6 @@ import (
 
 	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
 	"github.com/machadovilaca/alerts-ui-management/pkg/management"
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func main() {
@@ -28,23 +26,7 @@ func main() {
 
 	mgmClient := management.NewClient(ctx, client)
 
-	alertRule := monitoringv1.Rule{
-		Alert: "HighRequestLatency",
-		Expr:  intstr.FromString("job:request_latency_seconds:mean5m > 0.5"),
-		Labels: map[string]string{
-			"severity": "warning",
-		},
-		Annotations: map[string]string{
-			"summary":     "High request latency",
-			"description": "Request latency is above 0.5s for more than 10 minutes.",
-		},
-	}
-
-	err = mgmClient.CreateUserDefinedAlertRule(ctx, alertRule, management.Options{
-		PrometheusRuleName:      "custom-alert-rules",
-		PrometheusRuleNamespace: "testns",
-		GroupName:               "custom-group",
-	})
+	err = mgmClient.DeleteRuleById(ctx, "2a143899b1695d627820aa4e73dbe29c22582cce5929dd131b4654bbe2a3e99a")
 	if err != nil {
 		log.Fatal(err)
 	}

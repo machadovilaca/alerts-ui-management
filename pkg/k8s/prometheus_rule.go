@@ -14,6 +14,8 @@ import (
 // PrometheusRuleInterface defines operations for managing PrometheusRules
 type PrometheusRuleInterface interface {
 	List(ctx context.Context) ([]monitoringv1.PrometheusRule, error)
+	Update(ctx context.Context, pr monitoringv1.PrometheusRule) error
+	Delete(ctx context.Context, namespace string, name string) error
 
 	AddRule(ctx context.Context, namespacedName types.NamespacedName, groupName string, rule monitoringv1.Rule) error
 }
@@ -38,6 +40,26 @@ func (prm *prometheusRuleManager) List(ctx context.Context) ([]monitoringv1.Prom
 	}
 
 	return prs.Items, nil
+}
+
+// Update updates the specified PrometheusRule resource
+func (prm *prometheusRuleManager) Update(ctx context.Context, pr monitoringv1.PrometheusRule) error {
+	_, err := prm.clientset.MonitoringV1().PrometheusRules(pr.Namespace).Update(ctx, &pr, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update PrometheusRule %s/%s: %w", pr.Namespace, pr.Name, err)
+	}
+
+	return nil
+}
+
+// Delete deletes the specified PrometheusRule resource by namespace/name
+func (prm *prometheusRuleManager) Delete(ctx context.Context, namespace string, name string) error {
+	err := prm.clientset.MonitoringV1().PrometheusRules(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete PrometheusRule %s: %w", name, err)
+	}
+
+	return nil
 }
 
 // AddRule adds a new rule to the specified PrometheusRule resource

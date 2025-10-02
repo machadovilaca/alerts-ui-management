@@ -8,7 +8,9 @@ import (
 )
 
 type Client interface {
+	GetAlertingRuleId(ctx context.Context, alertRule monitoringv1.Rule) (string, error)
 	CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, options Options) error
+	DeleteRuleById(ctx context.Context, alertRuleId string) error
 }
 
 type client struct {
