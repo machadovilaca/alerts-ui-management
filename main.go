@@ -6,6 +6,9 @@ import (
 	"log"
 
 	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
+	"github.com/machadovilaca/alerts-ui-management/pkg/management"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func main() {
@@ -23,13 +26,26 @@ func main() {
 
 	fmt.Println("Successfully connected to Kubernetes cluster!")
 
-	prs, err := client.PrometheusRules().List(ctx)
-	if err != nil {
-		log.Fatalf("Failed to list PrometheusRules: %v", err)
+	mgmClient := management.NewClient(ctx, client)
+
+	alertRule := monitoringv1.Rule{
+		Alert: "HighRequestLatency",
+		Expr:  intstr.FromString("job:request_latency_seconds:mean5m > 0.5"),
+		Labels: map[string]string{
+			"severity": "warning",
+		},
+		Annotations: map[string]string{
+			"summary":     "High request latency",
+			"description": "Request latency is above 0.5s for more than 10 minutes.",
+		},
 	}
 
-	fmt.Printf("Found %d PrometheusRules:\n", len(prs))
-	for _, pr := range prs {
-		fmt.Printf("  - %s/%s\n", pr.Namespace, pr.Name)
+	err = mgmClient.CreateUserDefinedAlertRule(ctx, alertRule, management.Options{
+		PrometheusRuleName:      "custom-alert-rules",
+		PrometheusRuleNamespace: "testns",
+		GroupName:               "custom-group",
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
 }
