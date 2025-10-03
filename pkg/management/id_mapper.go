@@ -9,9 +9,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
 )
 
 type PrometheusRuleId types.NamespacedName
@@ -78,7 +79,7 @@ func (im *idMapper) addPrometheusRule(pr *monitoringv1.PrometheusRule) {
 	for _, group := range pr.Spec.Groups {
 		for _, rule := range group.Rules {
 			if rule.Alert != "" {
-				ruleId := getAlertingRuleId(&rule)
+				ruleId := GetAlertingRuleId(&rule)
 				if ruleId != "" {
 					rules = append(rules, ruleId)
 				}
@@ -96,7 +97,7 @@ func (im *idMapper) deletePrometheusRule(pr *monitoringv1.PrometheusRule) {
 	delete(im.files, PrometheusRuleId(types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}))
 }
 
-func getAlertingRuleId(alertRule *monitoringv1.Rule) PrometheusAlertRuleId {
+func GetAlertingRuleId(alertRule *monitoringv1.Rule) PrometheusAlertRuleId {
 	var kind, name string
 	if alertRule.Alert != "" {
 		kind = "alert"

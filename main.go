@@ -6,8 +6,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+
+	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
 )
 
 func main() {

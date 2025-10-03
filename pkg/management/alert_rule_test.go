@@ -192,6 +192,77 @@ var _ = Describe("Alert Rules", func() {
 
 			Expect(id1).To(Equal(id2))
 		})
+
+		It("should return error when trying to create a rule with an existing ID", func() {
+			By("Setting up a mock K8s client with a custom idMapper")
+			mockK8sClient := NewMockK8sClient()
+			testClient := NewMockClient(mockK8sClient)
+
+			By("Creating the first rule")
+			err1 := testClient.CreateUserDefinedAlertRule(ctx, alertRule, options)
+			Expect(err1).NotTo(HaveOccurred())
+
+			By("Getting the ID of the created rule")
+			addRuleCall := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls[0]
+			ruleId := addRuleCall.Rule.Annotations[management.AlertRuleIdLabelKey]
+			Expect(ruleId).NotTo(BeEmpty())
+
+			By("Setting up the mock idMapper to simulate that the rule exists")
+			mockK8sClient.SetupMockIdMapper(ruleId, options.PrometheusRuleNamespace, options.PrometheusRuleName)
+
+			By("Attempting to create the same rule again")
+			err2 := testClient.CreateUserDefinedAlertRule(ctx, alertRule, options)
+
+			By("Verifying that an error is returned")
+			Expect(err2).To(HaveOccurred())
+			Expect(err2.Error()).To(ContainSubstring("already exists"))
+			Expect(err2.Error()).To(ContainSubstring(ruleId))
+
+			By("Verifying that AddRule was not called for the second attempt")
+			Expect(mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls).To(HaveLen(1))
+		})
+
+		It("should handle duplicate identical rules correctly", func() {
+			By("Setting up a mock K8s client")
+			mockK8sClient := NewMockK8sClient()
+			testClient := NewMockClient(mockK8sClient)
+
+			By("Creating two identical rule objects")
+			rule1 := monitoringv1.Rule{
+				Alert: "DuplicateTestAlert",
+				Expr:  intstr.FromString("up == 0"),
+				Labels: map[string]string{
+					"severity": "warning",
+				},
+				Annotations: map[string]string{
+					"description": "Test duplicate alert",
+				},
+			}
+			rule2 := rule1 // Identical rule
+
+			By("Creating the first rule")
+			err1 := testClient.CreateUserDefinedAlertRule(ctx, rule1, options)
+			Expect(err1).NotTo(HaveOccurred())
+
+			By("Verifying that the rule was created")
+			Expect(mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls).To(HaveLen(1))
+			firstCall := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls[0]
+			firstRuleId := firstCall.Rule.Annotations[management.AlertRuleIdLabelKey]
+
+			By("Setting up the idMapper to simulate that the first rule exists")
+			mockK8sClient.SetupMockIdMapper(firstRuleId, options.PrometheusRuleNamespace, options.PrometheusRuleName)
+
+			By("Attempting to create the identical rule again")
+			err2 := testClient.CreateUserDefinedAlertRule(ctx, rule2, options)
+
+			By("Verifying that the second creation fails with duplicate error")
+			Expect(err2).To(HaveOccurred())
+			Expect(err2.Error()).To(ContainSubstring("already exists"))
+			Expect(err2.Error()).To(ContainSubstring(firstRuleId))
+
+			By("Verifying that AddRule was not called for the duplicate")
+			Expect(mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls).To(HaveLen(1))
+		})
 	})
 
 	Describe("DeleteRuleById", func() {

@@ -31,10 +31,39 @@ type MockClient struct {
 }
 
 func (m *MockClient) CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, options management.Options) error {
-	// Delegate to the actual implementation logic by creating a temporary real client
-	// This is a bit hacky but allows us to test the logic while mocking the idMapper
-	realClient := management.NewClient(ctx, m.k8sClient)
-	return realClient.CreateUserDefinedAlertRule(ctx, alertRule, options)
+	// Implement the same logic as the real client but using our mock idMapper
+	if alertRule.Annotations == nil {
+		alertRule.Annotations = make(map[string]string)
+	}
+
+	ruleId := management.GetAlertingRuleId(&alertRule)
+	alertRule.Annotations[management.AlertRuleIdLabelKey] = string(ruleId)
+
+	// Check if rule with the same ID already exists using our mock idMapper
+	_, err := m.idMapper.FindAlertRuleById(ruleId)
+	if err == nil {
+		return fmt.Errorf("alert rule with ID %s already exists", string(ruleId))
+	}
+
+	if options.PrometheusRuleName == "" || options.PrometheusRuleNamespace == "" {
+		return fmt.Errorf("PrometheusRule Name and Namespace must be specified")
+	}
+
+	nn := types.NamespacedName{
+		Name:      options.PrometheusRuleName,
+		Namespace: options.PrometheusRuleNamespace,
+	}
+
+	if options.GroupName == "" {
+		options.GroupName = management.DefaultGroupName
+	}
+
+	err = m.k8sClient.PrometheusRules().AddRule(ctx, nn, options.GroupName, alertRule)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (m *MockClient) DeleteRuleById(ctx context.Context, alertRuleId string) error {

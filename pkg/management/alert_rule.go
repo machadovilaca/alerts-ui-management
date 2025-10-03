@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -21,10 +22,18 @@ func (c *client) CreateUserDefinedAlertRule(ctx context.Context, alertRule monit
 	if alertRule.Annotations == nil {
 		alertRule.Annotations = make(map[string]string)
 	}
-	alertRule.Annotations[AlertRuleIdLabelKey] = string(getAlertingRuleId(&alertRule))
+
+	ruleId := GetAlertingRuleId(&alertRule)
+	alertRule.Annotations[AlertRuleIdLabelKey] = string(ruleId)
+
+	// Check if rule with the same ID already exists
+	_, err := c.idMapper.FindAlertRuleById(ruleId)
+	if err == nil {
+		return errors.New("alert rule with exact config already exists")
+	}
 
 	if options.PrometheusRuleName == "" || options.PrometheusRuleNamespace == "" {
-		return fmt.Errorf("PrometheusRule Name and Namespace must be specified")
+		return errors.New("PrometheusRule Name and Namespace must be specified")
 	}
 	nn := types.NamespacedName{
 		Name:      options.PrometheusRuleName,
@@ -35,7 +44,7 @@ func (c *client) CreateUserDefinedAlertRule(ctx context.Context, alertRule monit
 		options.GroupName = DefaultGroupName
 	}
 
-	err := c.k8sClient.PrometheusRules().AddRule(ctx, nn, options.GroupName, alertRule)
+	err = c.k8sClient.PrometheusRules().AddRule(ctx, nn, options.GroupName, alertRule)
 	if err != nil {
 		return err
 	}
@@ -112,7 +121,7 @@ func (c *client) shouldDeleteRule(rule monitoringv1.Rule, alertRuleId string) bo
 		}
 	}
 
-	if alertRuleId == string(getAlertingRuleId(&rule)) {
+	if alertRuleId == string(GetAlertingRuleId(&rule)) {
 		return true
 	}
 
