@@ -9,17 +9,21 @@ import (
 )
 
 type Client interface {
-	GetAlertingRuleId(ctx context.Context, alertRule monitoringv1.Rule) (string, error)
 	CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, options Options) error
 	DeleteRuleById(ctx context.Context, alertRuleId string) error
 }
 
 type client struct {
 	k8sClient k8s.Client
+	idMapper  *idMapper
 }
 
-func NewClient(_ context.Context, k8sClient k8s.Client) Client {
+func NewClient(ctx context.Context, k8sClient k8s.Client) Client {
+	im := newIdMapper(k8sClient)
+	im.WatchPrometheusRules(ctx)
+
 	return &client{
 		k8sClient: k8sClient,
+		idMapper:  im,
 	}
 }

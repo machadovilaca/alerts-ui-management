@@ -14,18 +14,17 @@ import (
 // PrometheusRuleInterface defines operations for managing PrometheusRules
 type PrometheusRuleInterface interface {
 	List(ctx context.Context) ([]monitoringv1.PrometheusRule, error)
+	Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error)
 	Update(ctx context.Context, pr monitoringv1.PrometheusRule) error
 	Delete(ctx context.Context, namespace string, name string) error
 
 	AddRule(ctx context.Context, namespacedName types.NamespacedName, groupName string, rule monitoringv1.Rule) error
 }
 
-// prometheusRuleManager implements PrometheusRuleInterface
 type prometheusRuleManager struct {
 	clientset *monitoringv1client.Clientset
 }
 
-// newPrometheusRuleManager creates a new PrometheusRule manager
 func newPrometheusRuleManagerManager(clientset *monitoringv1client.Clientset) PrometheusRuleInterface {
 	return &prometheusRuleManager{
 		clientset: clientset,
@@ -40,6 +39,16 @@ func (prm *prometheusRuleManager) List(ctx context.Context) ([]monitoringv1.Prom
 	}
 
 	return prs.Items, nil
+}
+
+// Get retrieves the specified PrometheusRule resource by namespace/name
+func (prm *prometheusRuleManager) Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error) {
+	pr, err := prm.clientset.MonitoringV1().PrometheusRules(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return pr, nil
 }
 
 // Update updates the specified PrometheusRule resource

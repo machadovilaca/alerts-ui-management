@@ -23,6 +23,9 @@ type Client interface {
 
 	// PrometheusRules returns the PrometheusRule interface
 	PrometheusRules() PrometheusRuleInterface
+
+	// PrometheusRuleInformer returns the PrometheusRuleInformer interface
+	PrometheusRuleInformer() PrometheusRuleInformerInterface
 }
 
 type client struct {
@@ -30,7 +33,8 @@ type client struct {
 	monitoringv1clientset *monitoringv1client.Clientset
 	config                *rest.Config
 
-	prometheusRuleManager PrometheusRuleInterface
+	prometheusRuleManager  PrometheusRuleInterface
+	prometheusRuleInformer PrometheusRuleInformerInterface
 }
 
 // ClientOptions holds configuration options for creating a Kubernetes client
@@ -77,6 +81,7 @@ func NewClient(_ context.Context, opts ClientOptions) (Client, error) {
 	}
 
 	c.prometheusRuleManager = newPrometheusRuleManagerManager(monitoringv1clientset)
+	c.prometheusRuleInformer = newPrometheusRuleInformer(monitoringv1clientset)
 
 	return c, nil
 }
@@ -93,4 +98,9 @@ func (c *client) TestConnection(_ context.Context) error {
 // PrometheusRules returns the PrometheusRule interface
 func (c *client) PrometheusRules() PrometheusRuleInterface {
 	return c.prometheusRuleManager
+}
+
+// PrometheusRuleInformer returns the PrometheusRuleInformer interface
+func (c *client) PrometheusRuleInformer() PrometheusRuleInformerInterface {
+	return c.prometheusRuleInformer
 }

@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
-	"github.com/machadovilaca/alerts-ui-management/pkg/management"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 )
 
 func main() {
@@ -24,10 +25,24 @@ func main() {
 
 	fmt.Println("Successfully connected to Kubernetes cluster!")
 
-	mgmClient := management.NewClient(ctx, client)
-
-	err = mgmClient.DeleteRuleById(ctx, "2a143899b1695d627820aa4e73dbe29c22582cce5929dd131b4654bbe2a3e99a")
-	if err != nil {
-		log.Fatal(err)
+	callbacks := k8s.PrometheusRuleInformerCallback{
+		OnAdd: func(pr *monitoringv1.PrometheusRule) {
+			fmt.Printf("PrometheusRule added: %s/%s\n", pr.Namespace, pr.Name)
+		},
+		OnUpdate: func(pr *monitoringv1.PrometheusRule) {
+			fmt.Printf("PrometheusRule updated: %s/%s\n", pr.Namespace, pr.Name)
+		},
+		OnDelete: func(pr *monitoringv1.PrometheusRule) {
+			fmt.Printf("PrometheusRule deleted: %s/%s\n", pr.Namespace, pr.Name)
+		},
 	}
+
+	go func() {
+		err = client.PrometheusRuleInformer().Run(ctx, callbacks)
+		if err != nil {
+			log.Fatalf("Failed to run PrometheusRule informer: %v", err)
+		}
+	}()
+
+	time.Sleep(10 * time.Second)
 }

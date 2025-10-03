@@ -2,7 +2,7 @@ package management_test
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,529 +15,605 @@ import (
 	"github.com/machadovilaca/alerts-ui-management/pkg/management"
 )
 
-var _ = Describe("Management", func() {
+var _ = Describe("Alert Rules", func() {
 	var (
-		ctx       context.Context
-		mockK8s   *management.MockK8sClient
-		client    management.Client
-		alertRule monitoringv1.Rule
-		options   management.Options
+		ctx           context.Context
+		mockK8sClient *MockK8sClient
+		client        management.Client
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		mockK8s = management.NewMockK8sClient()
-		client = management.NewClient(ctx, mockK8s)
-
-		// Set up a basic alert rule for testing
-		forDuration := "5m"
-		alertRule = monitoringv1.Rule{
-			Alert: "TestAlert",
-			Expr:  intstr.FromString("up == 0"),
-			For:   (*monitoringv1.Duration)(&forDuration),
-			Labels: map[string]string{
-				"severity": "critical",
-				"service":  "test",
-			},
-			Annotations: map[string]string{
-				"summary":     "Test alert summary",
-				"description": "Test alert description",
-			},
-		}
-
-		options = management.Options{
-			PrometheusRuleName:      "test-rule",
-			PrometheusRuleNamespace: "test-namespace",
-			GroupName:               "test-group",
-		}
-	})
-
-	Describe("NewClient", func() {
-		It("should create a new client successfully", func() {
-			client := management.NewClient(ctx, mockK8s)
-			Expect(client).NotTo(BeNil())
-		})
-	})
-
-	Describe("GetAlertingRuleId", func() {
-		Context("with valid alert rule", func() {
-			It("should generate a consistent ID for alert rules", func() {
-				id1, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(id1).NotTo(BeEmpty())
-				Expect(len(id1)).To(Equal(64)) // SHA256 hex string length
-
-				// Same rule should generate same ID
-				id2, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(id2).To(Equal(id1))
-			})
-
-			It("should generate different IDs for different alert rules", func() {
-				id1, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-
-				// Modify the alert rule
-				alertRule.Alert = "DifferentAlert"
-				id2, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(id1).NotTo(Equal(id2))
-			})
-
-			It("should handle rules with different labels", func() {
-				id1, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-
-				// Add a label
-				alertRule.Labels["new_label"] = "new_value"
-				id2, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(id1).NotTo(Equal(id2))
-			})
-
-			It("should handle rules with different annotations", func() {
-				id1, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-
-				// Add an annotation
-				alertRule.Annotations["new_annotation"] = "new_value"
-				id2, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(id1).NotTo(Equal(id2))
-			})
-
-			It("should ignore volatile annotations", func() {
-				id1, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-
-				// Add volatile annotation
-				alertRule.Annotations[management.AlertRuleIdLabelKey] = "some-id"
-				id2, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(id1).To(Equal(id2))
-			})
-		})
-
-		Context("with valid record rule", func() {
-			It("should generate ID for record rules", func() {
-				recordRule := monitoringv1.Rule{
-					Record: "test:record",
-					Expr:   intstr.FromString("sum(up)"),
-				}
-
-				id, err := client.GetAlertingRuleId(ctx, recordRule)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(id).NotTo(BeEmpty())
-			})
-		})
-
-		Context("with invalid rule", func() {
-			It("should return error for rule without alert or record", func() {
-				invalidRule := monitoringv1.Rule{
-					Expr: intstr.FromString("up == 0"),
-				}
-
-				id, err := client.GetAlertingRuleId(ctx, invalidRule)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("must have either 'alert' or 'record' field set"))
-				Expect(id).To(BeEmpty())
-			})
-		})
-
-		Context("with nil labels and annotations", func() {
-			It("should handle nil labels and annotations", func() {
-				alertRule.Labels = nil
-				alertRule.Annotations = nil
-
-				id, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(id).NotTo(BeEmpty())
-			})
-		})
-
-		Context("with nil For duration", func() {
-			It("should handle nil For duration", func() {
-				alertRule.For = nil
-
-				id, err := client.GetAlertingRuleId(ctx, alertRule)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(id).NotTo(BeEmpty())
-			})
-		})
+		mockK8sClient = NewMockK8sClient()
+		client = management.NewClient(ctx, mockK8sClient)
 	})
 
 	Describe("CreateUserDefinedAlertRule", func() {
-		Context("with valid options", func() {
-			It("should create alert rule successfully", func() {
-				err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
-				Expect(err).NotTo(HaveOccurred())
+		var (
+			alertRule monitoringv1.Rule
+			options   management.Options
+		)
 
-				// Verify the AddRule was called
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				Expect(mockPrometheus.AddRuleCalls).To(HaveLen(1))
+		BeforeEach(func() {
+			By("Creating a sample alert rule")
+			alertRule = monitoringv1.Rule{
+				Alert: "TestAlert",
+				Expr:  intstr.FromString("up == 0"),
+				Labels: map[string]string{
+					"severity": "critical",
+				},
+				Annotations: map[string]string{
+					"description": "Test alert description",
+				},
+			}
 
-				addRuleCall := mockPrometheus.AddRuleCalls[0]
-				Expect(addRuleCall.Ctx).To(Equal(ctx))
-				Expect(addRuleCall.NamespacedName.Name).To(Equal(options.PrometheusRuleName))
-				Expect(addRuleCall.NamespacedName.Namespace).To(Equal(options.PrometheusRuleNamespace))
-				Expect(addRuleCall.GroupName).To(Equal(options.GroupName))
-
-				// Verify the rule has the ID annotation added
-				Expect(addRuleCall.Rule.Annotations).To(HaveKey(management.AlertRuleIdLabelKey))
-				Expect(addRuleCall.Rule.Annotations[management.AlertRuleIdLabelKey]).NotTo(BeEmpty())
-			})
-
-			It("should use default group name when not specified", func() {
-				options.GroupName = ""
-
-				err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
-				Expect(err).NotTo(HaveOccurred())
-
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				Expect(mockPrometheus.AddRuleCalls).To(HaveLen(1))
-				Expect(mockPrometheus.AddRuleCalls[0].GroupName).To(Equal(management.DefaultGroupName))
-			})
-
-			It("should initialize annotations map if nil", func() {
-				alertRule.Annotations = nil
-
-				err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
-				Expect(err).NotTo(HaveOccurred())
-
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				Expect(mockPrometheus.AddRuleCalls).To(HaveLen(1))
-				Expect(mockPrometheus.AddRuleCalls[0].Rule.Annotations).To(HaveKey(management.AlertRuleIdLabelKey))
-			})
+			options = management.Options{
+				PrometheusRuleName:      "test-rule",
+				PrometheusRuleNamespace: "test-namespace",
+				GroupName:               "test-group",
+			}
 		})
 
-		Context("with invalid options", func() {
-			It("should return error when PrometheusRuleName is empty", func() {
-				options.PrometheusRuleName = ""
+		It("should successfully create a user defined alert rule", func() {
+			err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
+			Expect(err).NotTo(HaveOccurred())
 
-				err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("PrometheusRule Name and Namespace must be specified"))
-			})
+			By("Verifying that AddRule was called with correct parameters")
+			Expect(mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls).To(HaveLen(1))
+			addRuleCall := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls[0]
 
-			It("should return error when PrometheusRuleNamespace is empty", func() {
-				options.PrometheusRuleNamespace = ""
+			By("Verifying the namespaced name")
+			expectedNN := types.NamespacedName{
+				Name:      "test-rule",
+				Namespace: "test-namespace",
+			}
+			Expect(addRuleCall.NamespacedName).To(Equal(expectedNN))
 
-				err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("PrometheusRule Name and Namespace must be specified"))
-			})
+			By("Verifying the group name")
+			Expect(addRuleCall.GroupName).To(Equal("test-group"))
+
+			By("Verifying the rule has the ID annotation added")
+			Expect(addRuleCall.Rule.Annotations).To(HaveKey(management.AlertRuleIdLabelKey))
+			Expect(addRuleCall.Rule.Annotations[management.AlertRuleIdLabelKey]).NotTo(BeEmpty())
+
+			By("Verifying other rule properties are preserved")
+			Expect(addRuleCall.Rule.Alert).To(Equal("TestAlert"))
+			Expect(addRuleCall.Rule.Expr.String()).To(Equal("up == 0"))
+			Expect(addRuleCall.Rule.Labels).To(Equal(map[string]string{"severity": "critical"}))
+			Expect(addRuleCall.Rule.Annotations["description"]).To(Equal("Test alert description"))
 		})
 
-		Context("when GetAlertingRuleId fails", func() {
-			It("should return error from GetAlertingRuleId", func() {
-				invalidRule := monitoringv1.Rule{
-					Expr: intstr.FromString("up == 0"),
-				}
+		It("should use default group name when not specified", func() {
+			options.GroupName = ""
 
-				err := client.CreateUserDefinedAlertRule(ctx, invalidRule, options)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("must have either 'alert' or 'record' field set"))
-			})
+			err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Verifying that the default group name is used")
+			addRuleCall := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls[0]
+			Expect(addRuleCall.GroupName).To(Equal(management.DefaultGroupName))
 		})
 
-		Context("when k8s AddRule fails", func() {
-			It("should return error from k8s client", func() {
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				mockPrometheus.AddRuleFunc = func(ctx context.Context, namespacedName types.NamespacedName, groupName string, rule monitoringv1.Rule) error {
-					return errors.New("k8s error")
-				}
+		It("should add ID annotation to rule with nil annotations", func() {
+			alertRule.Annotations = nil
 
-				err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("k8s error"))
-			})
+			err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Verifying that annotations map was created and ID was added")
+			addRuleCall := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls[0]
+			Expect(addRuleCall.Rule.Annotations).NotTo(BeNil())
+			Expect(addRuleCall.Rule.Annotations).To(HaveKey(management.AlertRuleIdLabelKey))
+		})
+
+		It("should return error when PrometheusRuleName is empty", func() {
+			options.PrometheusRuleName = ""
+
+			err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("PrometheusRule Name and Namespace must be specified"))
+
+			By("Verifying that AddRule was not called")
+			Expect(mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls).To(HaveLen(0))
+		})
+
+		It("should return error when PrometheusRuleNamespace is empty", func() {
+			options.PrometheusRuleNamespace = ""
+
+			err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("PrometheusRule Name and Namespace must be specified"))
+
+			By("Verifying that AddRule was not called")
+			Expect(mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls).To(HaveLen(0))
+		})
+
+		It("should propagate k8s client errors", func() {
+			expectedError := fmt.Errorf("k8s client error")
+			mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleFunc = func(ctx context.Context, nn types.NamespacedName, groupName string, rule monitoringv1.Rule) error {
+				return expectedError
+			}
+
+			err := client.CreateUserDefinedAlertRule(ctx, alertRule, options)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedError))
+		})
+
+		It("should handle recording rules", func() {
+			By("Creating a recording rule instead of alert rule")
+			recordingRule := monitoringv1.Rule{
+				Record: "test:recording:rule",
+				Expr:   intstr.FromString("sum(up)"),
+				Labels: map[string]string{
+					"job": "test",
+				},
+			}
+
+			err := client.CreateUserDefinedAlertRule(ctx, recordingRule, options)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Verifying that AddRule was called with the recording rule")
+			addRuleCall := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls[0]
+			Expect(addRuleCall.Rule.Record).To(Equal("test:recording:rule"))
+			Expect(addRuleCall.Rule.Alert).To(BeEmpty())
+			Expect(addRuleCall.Rule.Annotations).To(HaveKey(management.AlertRuleIdLabelKey))
+		})
+
+		It("should generate consistent IDs for identical rules", func() {
+			By("Creating two identical rules")
+			rule1 := monitoringv1.Rule{
+				Alert: "TestAlert",
+				Expr:  intstr.FromString("up == 0"),
+				Labels: map[string]string{
+					"severity": "critical",
+				},
+			}
+			rule2 := rule1
+
+			err1 := client.CreateUserDefinedAlertRule(ctx, rule1, options)
+			Expect(err1).NotTo(HaveOccurred())
+
+			// Reset mock calls and create second rule
+			mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls = nil
+			err2 := client.CreateUserDefinedAlertRule(ctx, rule2, options)
+			Expect(err2).NotTo(HaveOccurred())
+
+			By("Verifying both rules have the same ID")
+			addRuleCall1 := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls[0]
+			id1 := addRuleCall1.Rule.Annotations[management.AlertRuleIdLabelKey]
+
+			// Since we reset the calls, we need to look at the first call again
+			mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls = nil
+			err3 := client.CreateUserDefinedAlertRule(ctx, rule1, options)
+			Expect(err3).NotTo(HaveOccurred())
+
+			addRuleCall2 := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).AddRuleCalls[0]
+			id2 := addRuleCall2.Rule.Annotations[management.AlertRuleIdLabelKey]
+
+			Expect(id1).To(Equal(id2))
 		})
 	})
 
 	Describe("DeleteRuleById", func() {
-		var testRuleId string
+		var (
+			alertRuleId string
+			namespace   string
+			name        string
+			mockClient  *MockClient
+		)
 
 		BeforeEach(func() {
-			var err error
-			testRuleId, err = client.GetAlertingRuleId(ctx, alertRule)
-			Expect(err).NotTo(HaveOccurred())
+			alertRuleId = "test-alert-rule-id"
+			namespace = "test-namespace"
+			name = "test-rule"
+
+			By("Setting up mock idMapper data")
+			mockK8sClient.SetupMockIdMapper(alertRuleId, namespace, name)
+
+			By("Using MockClient for DeleteRuleById tests to properly mock the idMapper")
+			mockClient = NewMockClient(mockK8sClient)
 		})
 
-		Context("when rule exists", func() {
-			It("should delete rule and update PrometheusRule", func() {
-				// Setup mock to return a PrometheusRule with our rule
-				existingRule := alertRule
-				existingRule.Annotations = map[string]string{
-					management.AlertRuleIdLabelKey: testRuleId,
-					"summary":                      "Test alert summary",
-				}
-
-				otherRule := monitoringv1.Rule{
-					Alert: "OtherAlert",
-					Expr:  intstr.FromString("up == 1"),
-					Annotations: map[string]string{
-						management.AlertRuleIdLabelKey: "other-id",
-					},
-				}
-
-				prometheusRule := monitoringv1.PrometheusRule{
+		Context("when rule exists and PrometheusRule has multiple groups", func() {
+			BeforeEach(func() {
+				By("Setting up a PrometheusRule with multiple groups and rules")
+				prometheusRule := &monitoringv1.PrometheusRule{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-rule",
-						Namespace: "test-namespace",
+						Name:      name,
+						Namespace: namespace,
 					},
 					Spec: monitoringv1.PrometheusRuleSpec{
 						Groups: []monitoringv1.RuleGroup{
 							{
-								Name:  "test-group",
-								Rules: []monitoringv1.Rule{existingRule, otherRule},
+								Name: "group1",
+								Rules: []monitoringv1.Rule{
+									{
+										Alert: "Alert1",
+										Expr:  intstr.FromString("up == 0"),
+										Annotations: map[string]string{
+											management.AlertRuleIdLabelKey: alertRuleId,
+										},
+									},
+									{
+										Alert: "Alert2",
+										Expr:  intstr.FromString("up == 1"),
+										Annotations: map[string]string{
+											management.AlertRuleIdLabelKey: "different-id",
+										},
+									},
+								},
+							},
+							{
+								Name: "group2",
+								Rules: []monitoringv1.Rule{
+									{
+										Alert: "Alert3",
+										Expr:  intstr.FromString("up == 2"),
+										Annotations: map[string]string{
+											management.AlertRuleIdLabelKey: "another-id",
+										},
+									},
+								},
 							},
 						},
 					},
 				}
 
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				mockPrometheus.ListFunc = func(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
-					return []monitoringv1.PrometheusRule{prometheusRule}, nil
+				mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, error) {
+					return prometheusRule, nil
 				}
+			})
 
-				err := client.DeleteRuleById(ctx, testRuleId)
+			It("should successfully delete the rule and update PrometheusRule", func() {
+				err := mockClient.DeleteRuleById(ctx, alertRuleId)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Verify Update was called
-				Expect(mockPrometheus.UpdateCalls).To(HaveLen(1))
+				By("Verifying Get was called")
+				mockPrometheusRules := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface)
+				Expect(mockPrometheusRules.GetCalls).To(HaveLen(1))
+				Expect(mockPrometheusRules.GetCalls[0].Namespace).To(Equal(namespace))
+				Expect(mockPrometheusRules.GetCalls[0].Name).To(Equal(name))
 
-				updatedRule := mockPrometheus.UpdateCalls[0].Pr
-				Expect(updatedRule.Spec.Groups).To(HaveLen(1))
+				By("Verifying Update was called with the rule removed")
+				Expect(mockPrometheusRules.UpdateCalls).To(HaveLen(1))
+				updatedRule := mockPrometheusRules.UpdateCalls[0].Pr
+
+				By("Verifying it should still have both groups")
+				Expect(updatedRule.Spec.Groups).To(HaveLen(2))
+
+				// Group1 should have only one rule (Alert2)
 				Expect(updatedRule.Spec.Groups[0].Rules).To(HaveLen(1))
-				Expect(updatedRule.Spec.Groups[0].Rules[0].Alert).To(Equal("OtherAlert"))
+				Expect(updatedRule.Spec.Groups[0].Rules[0].Alert).To(Equal("Alert2"))
+
+				// Group2 should remain unchanged
+				Expect(updatedRule.Spec.Groups[1].Rules).To(HaveLen(1))
+				Expect(updatedRule.Spec.Groups[1].Rules[0].Alert).To(Equal("Alert3"))
+
+				By("Verifying Delete was not called")
+				Expect(mockPrometheusRules.DeleteCalls).To(HaveLen(0))
 			})
+		})
 
-			It("should delete entire PrometheusRule when no rules remain", func() {
-				// Setup mock to return a PrometheusRule with only our rule
-				existingRule := alertRule
-				existingRule.Annotations = map[string]string{
-					management.AlertRuleIdLabelKey: testRuleId,
-				}
-
-				prometheusRule := monitoringv1.PrometheusRule{
+		Context("when rule exists and is the only rule in the group", func() {
+			BeforeEach(func() {
+				By("Setting up a PrometheusRule where the target rule is the only rule in its group")
+				prometheusRule := &monitoringv1.PrometheusRule{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-rule",
-						Namespace: "test-namespace",
+						Name:      name,
+						Namespace: namespace,
 					},
 					Spec: monitoringv1.PrometheusRuleSpec{
 						Groups: []monitoringv1.RuleGroup{
 							{
-								Name:  "test-group",
-								Rules: []monitoringv1.Rule{existingRule},
+								Name: "group1",
+								Rules: []monitoringv1.Rule{
+									{
+										Alert: "Alert1",
+										Expr:  intstr.FromString("up == 0"),
+										Annotations: map[string]string{
+											management.AlertRuleIdLabelKey: alertRuleId,
+										},
+									},
+								},
+							},
+							{
+								Name: "group2",
+								Rules: []monitoringv1.Rule{
+									{
+										Alert: "Alert2",
+										Expr:  intstr.FromString("up == 1"),
+										Annotations: map[string]string{
+											management.AlertRuleIdLabelKey: "different-id",
+										},
+									},
+								},
 							},
 						},
 					},
 				}
 
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				mockPrometheus.ListFunc = func(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
-					return []monitoringv1.PrometheusRule{prometheusRule}, nil
+				mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, error) {
+					return prometheusRule, nil
 				}
-
-				err := client.DeleteRuleById(ctx, testRuleId)
-				Expect(err).NotTo(HaveOccurred())
-
-				// Verify Delete was called instead of Update
-				Expect(mockPrometheus.DeleteCalls).To(HaveLen(1))
-				Expect(mockPrometheus.UpdateCalls).To(HaveLen(0))
-
-				deleteCall := mockPrometheus.DeleteCalls[0]
-				Expect(deleteCall.Namespace).To(Equal("test-namespace"))
-				Expect(deleteCall.Name).To(Equal("test-rule"))
 			})
 
-			It("should handle multiple groups correctly", func() {
-				// Setup rule to delete
-				ruleToDelete := alertRule
-				ruleToDelete.Annotations = map[string]string{
-					management.AlertRuleIdLabelKey: testRuleId,
-				}
-
-				// Setup rule to keep in different group
-				ruleToKeep := monitoringv1.Rule{
-					Alert: "KeepAlert",
-					Expr:  intstr.FromString("up == 1"),
-					Annotations: map[string]string{
-						management.AlertRuleIdLabelKey: "keep-id",
-					},
-				}
-
-				prometheusRule := monitoringv1.PrometheusRule{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-rule",
-						Namespace: "test-namespace",
-					},
-					Spec: monitoringv1.PrometheusRuleSpec{
-						Groups: []monitoringv1.RuleGroup{
-							{
-								Name:  "group-to-empty",
-								Rules: []monitoringv1.Rule{ruleToDelete},
-							},
-							{
-								Name:  "group-to-keep",
-								Rules: []monitoringv1.Rule{ruleToKeep},
-							},
-						},
-					},
-				}
-
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				mockPrometheus.ListFunc = func(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
-					return []monitoringv1.PrometheusRule{prometheusRule}, nil
-				}
-
-				err := client.DeleteRuleById(ctx, testRuleId)
+			It("should remove the empty group and update PrometheusRule", func() {
+				err := mockClient.DeleteRuleById(ctx, alertRuleId)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Verify Update was called and only one group remains
-				Expect(mockPrometheus.UpdateCalls).To(HaveLen(1))
-				updatedRule := mockPrometheus.UpdateCalls[0].Pr
+				By("Verifying Update was called with the empty group removed")
+				mockPrometheusRules := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface)
+				Expect(mockPrometheusRules.UpdateCalls).To(HaveLen(1))
+				updatedRule := mockPrometheusRules.UpdateCalls[0].Pr
+
+				By("Verifying it should have only one group now (group2)")
 				Expect(updatedRule.Spec.Groups).To(HaveLen(1))
-				Expect(updatedRule.Spec.Groups[0].Name).To(Equal("group-to-keep"))
+				Expect(updatedRule.Spec.Groups[0].Name).To(Equal("group2"))
+				Expect(updatedRule.Spec.Groups[0].Rules).To(HaveLen(1))
+				Expect(updatedRule.Spec.Groups[0].Rules[0].Alert).To(Equal("Alert2"))
+
+				By("Verifying Delete was not called")
+				Expect(mockPrometheusRules.DeleteCalls).To(HaveLen(0))
 			})
 		})
 
-		Context("when rule does not exist", func() {
-			It("should succeed when rule ID is not found", func() {
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				mockPrometheus.ListFunc = func(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
-					return []monitoringv1.PrometheusRule{}, nil
-				}
-
-				err := client.DeleteRuleById(ctx, "non-existent-id")
-				Expect(err).NotTo(HaveOccurred())
-			})
-
-			It("should handle rules without annotations", func() {
-				ruleWithoutAnnotations := monitoringv1.Rule{
-					Alert: "NoAnnotations",
-					Expr:  intstr.FromString("up == 0"),
-				}
-
-				prometheusRule := monitoringv1.PrometheusRule{
+		Context("when rule exists and is the only rule in the entire PrometheusRule", func() {
+			BeforeEach(func() {
+				By("Setting up a PrometheusRule with only the target rule")
+				prometheusRule := &monitoringv1.PrometheusRule{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-rule",
-						Namespace: "test-namespace",
+						Name:      name,
+						Namespace: namespace,
 					},
 					Spec: monitoringv1.PrometheusRuleSpec{
 						Groups: []monitoringv1.RuleGroup{
 							{
-								Name:  "test-group",
-								Rules: []monitoringv1.Rule{ruleWithoutAnnotations},
+								Name: "group1",
+								Rules: []monitoringv1.Rule{
+									{
+										Alert: "Alert1",
+										Expr:  intstr.FromString("up == 0"),
+										Annotations: map[string]string{
+											management.AlertRuleIdLabelKey: alertRuleId,
+										},
+									},
+								},
 							},
 						},
 					},
 				}
 
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				mockPrometheus.ListFunc = func(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
-					return []monitoringv1.PrometheusRule{prometheusRule}, nil
+				mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, error) {
+					return prometheusRule, nil
 				}
+			})
 
-				err := client.DeleteRuleById(ctx, testRuleId)
+			It("should delete the entire PrometheusRule", func() {
+				err := mockClient.DeleteRuleById(ctx, alertRuleId)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Should not update since no matching rule found
-				Expect(mockPrometheus.UpdateCalls).To(HaveLen(0))
-				Expect(mockPrometheus.DeleteCalls).To(HaveLen(0))
+				By("Verifying Delete was called instead of Update")
+				mockPrometheusRules := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface)
+				Expect(mockPrometheusRules.DeleteCalls).To(HaveLen(1))
+				Expect(mockPrometheusRules.DeleteCalls[0].Namespace).To(Equal(namespace))
+				Expect(mockPrometheusRules.DeleteCalls[0].Name).To(Equal(name))
+
+				By("Verifying Update was not called")
+				Expect(mockPrometheusRules.UpdateCalls).To(HaveLen(0))
 			})
 		})
 
-		Context("when k8s operations fail", func() {
-			It("should return error when List fails", func() {
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				mockPrometheus.ListFunc = func(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
-					return nil, errors.New("list error")
+		Context("when rule is matched by computed ID instead of annotation", func() {
+			BeforeEach(func() {
+				By("Setting up a rule without the ID annotation, relying on computed ID")
+				prometheusRule := &monitoringv1.PrometheusRule{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name,
+						Namespace: namespace,
+					},
+					Spec: monitoringv1.PrometheusRuleSpec{
+						Groups: []monitoringv1.RuleGroup{
+							{
+								Name: "group1",
+								Rules: []monitoringv1.Rule{
+									{
+										Alert:  "TestAlert",
+										Expr:   intstr.FromString("up == 0"),
+										Labels: map[string]string{"severity": "critical"},
+									},
+								},
+							},
+						},
+					},
 				}
 
-				err := client.DeleteRuleById(ctx, testRuleId)
+				By("Using a known ID pattern for testing computed ID functionality")
+				alertRuleId = "computed-rule-id-for-test"
+
+				By("Setting up mock idMapper with the computed ID")
+				mockK8sClient.SetupMockIdMapper(alertRuleId, namespace, name)
+
+				mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, error) {
+					return prometheusRule, nil
+				}
+			})
+
+			It("should successfully delete the rule using computed ID", func() {
+				err := mockClient.DeleteRuleById(ctx, alertRuleId)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Verifying the entire PrometheusRule was deleted since it was the only rule")
+				mockPrometheusRules := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface)
+				Expect(mockPrometheusRules.DeleteCalls).To(HaveLen(1))
+			})
+		})
+
+		Context("error cases", func() {
+			It("should return error when alert rule ID is not found", func() {
+				nonExistentId := "non-existent-id"
+				err := mockClient.DeleteRuleById(ctx, nonExistentId)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to list PrometheusRules"))
+				Expect(err.Error()).To(ContainSubstring("alert rule with id non-existent-id not found"))
+
+				By("Verifying no calls were made to Get, Update, or Delete")
+				mockPrometheusRules := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface)
+				Expect(mockPrometheusRules.GetCalls).To(HaveLen(0))
+				Expect(mockPrometheusRules.UpdateCalls).To(HaveLen(0))
+				Expect(mockPrometheusRules.DeleteCalls).To(HaveLen(0))
 			})
 
-			It("should return error when Update fails", func() {
-				existingRule := alertRule
-				existingRule.Annotations = map[string]string{
-					management.AlertRuleIdLabelKey: testRuleId,
+			It("should return error when PrometheusRule Get fails", func() {
+				expectedError := fmt.Errorf("failed to get PrometheusRule")
+				mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, error) {
+					return nil, expectedError
 				}
 
-				otherRule := monitoringv1.Rule{
-					Alert: "OtherAlert",
-					Expr:  intstr.FromString("up == 1"),
-					Annotations: map[string]string{
-						management.AlertRuleIdLabelKey: "other-id",
-					},
-				}
+				err := mockClient.DeleteRuleById(ctx, alertRuleId)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedError))
 
-				prometheusRule := monitoringv1.PrometheusRule{
+				By("Verifying Get was called but Update and Delete were not")
+				mockPrometheusRules := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface)
+				Expect(mockPrometheusRules.GetCalls).To(HaveLen(1))
+				Expect(mockPrometheusRules.UpdateCalls).To(HaveLen(0))
+				Expect(mockPrometheusRules.DeleteCalls).To(HaveLen(0))
+			})
+
+			It("should return error when PrometheusRule Update fails", func() {
+				By("Setting up a PrometheusRule that will trigger an Update (not Delete)")
+				prometheusRule := &monitoringv1.PrometheusRule{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-rule",
-						Namespace: "test-namespace",
+						Name:      name,
+						Namespace: namespace,
 					},
 					Spec: monitoringv1.PrometheusRuleSpec{
 						Groups: []monitoringv1.RuleGroup{
 							{
-								Name:  "test-group",
-								Rules: []monitoringv1.Rule{existingRule, otherRule},
+								Name: "group1",
+								Rules: []monitoringv1.Rule{
+									{
+										Alert: "Alert1",
+										Expr:  intstr.FromString("up == 0"),
+										Annotations: map[string]string{
+											management.AlertRuleIdLabelKey: alertRuleId,
+										},
+									},
+									{
+										Alert: "Alert2",
+										Expr:  intstr.FromString("up == 1"),
+									},
+								},
 							},
 						},
 					},
 				}
 
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				mockPrometheus.ListFunc = func(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
-					return []monitoringv1.PrometheusRule{prometheusRule}, nil
-				}
-				mockPrometheus.UpdateFunc = func(ctx context.Context, pr monitoringv1.PrometheusRule) error {
-					return errors.New("update error")
+				mockPrometheusRules := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface)
+				mockPrometheusRules.GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, error) {
+					return prometheusRule, nil
 				}
 
-				err := client.DeleteRuleById(ctx, testRuleId)
+				expectedError := fmt.Errorf("failed to update PrometheusRule")
+				mockPrometheusRules.UpdateFunc = func(ctx context.Context, pr monitoringv1.PrometheusRule) error {
+					return expectedError
+				}
+
+				err := mockClient.DeleteRuleById(ctx, alertRuleId)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to update PrometheusRule"))
+				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", namespace, name)))
+
+				By("Verifying Update was called but failed")
+				Expect(mockPrometheusRules.UpdateCalls).To(HaveLen(1))
+				Expect(mockPrometheusRules.DeleteCalls).To(HaveLen(0))
 			})
 
-			It("should return error when Delete fails", func() {
-				existingRule := alertRule
-				existingRule.Annotations = map[string]string{
-					management.AlertRuleIdLabelKey: testRuleId,
-				}
-
-				prometheusRule := monitoringv1.PrometheusRule{
+			It("should return error when PrometheusRule Delete fails", func() {
+				By("Setting up a PrometheusRule that will trigger a Delete (single rule)")
+				prometheusRule := &monitoringv1.PrometheusRule{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-rule",
-						Namespace: "test-namespace",
+						Name:      name,
+						Namespace: namespace,
 					},
 					Spec: monitoringv1.PrometheusRuleSpec{
 						Groups: []monitoringv1.RuleGroup{
 							{
-								Name:  "test-group",
-								Rules: []monitoringv1.Rule{existingRule},
+								Name: "group1",
+								Rules: []monitoringv1.Rule{
+									{
+										Alert: "Alert1",
+										Expr:  intstr.FromString("up == 0"),
+										Annotations: map[string]string{
+											management.AlertRuleIdLabelKey: alertRuleId,
+										},
+									},
+								},
 							},
 						},
 					},
 				}
 
-				mockPrometheus := mockK8s.PrometheusRules().(*management.MockPrometheusRuleInterface)
-				mockPrometheus.ListFunc = func(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
-					return []monitoringv1.PrometheusRule{prometheusRule}, nil
-				}
-				mockPrometheus.DeleteFunc = func(ctx context.Context, namespace string, name string) error {
-					return errors.New("delete error")
+				mockPrometheusRules := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface)
+				mockPrometheusRules.GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, error) {
+					return prometheusRule, nil
 				}
 
-				err := client.DeleteRuleById(ctx, testRuleId)
+				expectedError := fmt.Errorf("failed to delete PrometheusRule")
+				mockPrometheusRules.DeleteFunc = func(ctx context.Context, namespace, name string) error {
+					return expectedError
+				}
+
+				err := mockClient.DeleteRuleById(ctx, alertRuleId)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to delete PrometheusRule"))
+				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", namespace, name)))
+
+				By("Verifying Delete was called but failed")
+				Expect(mockPrometheusRules.DeleteCalls).To(HaveLen(1))
+				Expect(mockPrometheusRules.UpdateCalls).To(HaveLen(0))
+			})
+		})
+
+		Context("when rule is not found in the PrometheusRule", func() {
+			BeforeEach(func() {
+				By("Setting up a PrometheusRule that doesn't contain the target rule")
+				prometheusRule := &monitoringv1.PrometheusRule{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name,
+						Namespace: namespace,
+					},
+					Spec: monitoringv1.PrometheusRuleSpec{
+						Groups: []monitoringv1.RuleGroup{
+							{
+								Name: "group1",
+								Rules: []monitoringv1.Rule{
+									{
+										Alert: "DifferentAlert",
+										Expr:  intstr.FromString("up == 0"),
+										Annotations: map[string]string{
+											management.AlertRuleIdLabelKey: "different-id",
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+
+				mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface).GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, error) {
+					return prometheusRule, nil
+				}
+			})
+
+			It("should succeed without making changes when rule is not found", func() {
+				err := mockClient.DeleteRuleById(ctx, alertRuleId)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Verifying Get was called but Update and Delete were not")
+				mockPrometheusRules := mockK8sClient.PrometheusRules().(*MockPrometheusRuleInterface)
+				Expect(mockPrometheusRules.GetCalls).To(HaveLen(1))
+				Expect(mockPrometheusRules.UpdateCalls).To(HaveLen(0))
+				Expect(mockPrometheusRules.DeleteCalls).To(HaveLen(0))
 			})
 		})
 	})
