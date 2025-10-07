@@ -1,0 +1,173 @@
+package testutils
+
+import (
+	"context"
+	"errors"
+
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
+)
+
+// MockClient is a mock implementation of k8s.Client interface
+type MockClient struct {
+	TestConnectionFunc         func(ctx context.Context) error
+	PrometheusRulesFunc        func() k8s.PrometheusRuleInterface
+	PrometheusRuleInformerFunc func() k8s.PrometheusRuleInformerInterface
+}
+
+// TestConnection mocks the TestConnection method
+func (m *MockClient) TestConnection(ctx context.Context) error {
+	if m.TestConnectionFunc != nil {
+		return m.TestConnectionFunc(ctx)
+	}
+	return nil
+}
+
+// PrometheusRules mocks the PrometheusRules method
+func (m *MockClient) PrometheusRules() k8s.PrometheusRuleInterface {
+	if m.PrometheusRulesFunc != nil {
+		return m.PrometheusRulesFunc()
+	}
+	return &MockPrometheusRuleInterface{}
+}
+
+// PrometheusRuleInformer mocks the PrometheusRuleInformer method
+func (m *MockClient) PrometheusRuleInformer() k8s.PrometheusRuleInformerInterface {
+	if m.PrometheusRuleInformerFunc != nil {
+		return m.PrometheusRuleInformerFunc()
+	}
+	return &MockPrometheusRuleInformerInterface{}
+}
+
+// MockPrometheusRuleInterface is a mock implementation of k8s.PrometheusRuleInterface
+type MockPrometheusRuleInterface struct {
+	ListFunc    func(ctx context.Context) ([]monitoringv1.PrometheusRule, error)
+	GetFunc     func(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error)
+	UpdateFunc  func(ctx context.Context, pr monitoringv1.PrometheusRule) error
+	DeleteFunc  func(ctx context.Context, namespace string, name string) error
+	AddRuleFunc func(ctx context.Context, namespacedName types.NamespacedName, groupName string, rule monitoringv1.Rule) error
+
+	// Storage for test data
+	PrometheusRules map[string]*monitoringv1.PrometheusRule
+}
+
+// List mocks the List method
+func (m *MockPrometheusRuleInterface) List(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
+	if m.ListFunc != nil {
+		return m.ListFunc(ctx)
+	}
+
+	var rules []monitoringv1.PrometheusRule
+	if m.PrometheusRules != nil {
+		for _, rule := range m.PrometheusRules {
+			rules = append(rules, *rule)
+		}
+	}
+	return rules, nil
+}
+
+// Get mocks the Get method
+func (m *MockPrometheusRuleInterface) Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error) {
+	if m.GetFunc != nil {
+		return m.GetFunc(ctx, namespace, name)
+	}
+
+	key := namespace + "/" + name
+	if m.PrometheusRules != nil {
+		if rule, exists := m.PrometheusRules[key]; exists {
+			return rule, nil
+		}
+	}
+	return nil, errors.New("PrometheusRule not found")
+}
+
+// Update mocks the Update method
+func (m *MockPrometheusRuleInterface) Update(ctx context.Context, pr monitoringv1.PrometheusRule) error {
+	if m.UpdateFunc != nil {
+		return m.UpdateFunc(ctx, pr)
+	}
+
+	key := pr.Namespace + "/" + pr.Name
+	if m.PrometheusRules == nil {
+		m.PrometheusRules = make(map[string]*monitoringv1.PrometheusRule)
+	}
+	m.PrometheusRules[key] = &pr
+	return nil
+}
+
+// Delete mocks the Delete method
+func (m *MockPrometheusRuleInterface) Delete(ctx context.Context, namespace string, name string) error {
+	if m.DeleteFunc != nil {
+		return m.DeleteFunc(ctx, namespace, name)
+	}
+
+	key := namespace + "/" + name
+	if m.PrometheusRules != nil {
+		delete(m.PrometheusRules, key)
+	}
+	return nil
+}
+
+// AddRule mocks the AddRule method
+func (m *MockPrometheusRuleInterface) AddRule(ctx context.Context, namespacedName types.NamespacedName, groupName string, rule monitoringv1.Rule) error {
+	if m.AddRuleFunc != nil {
+		return m.AddRuleFunc(ctx, namespacedName, groupName, rule)
+	}
+
+	key := namespacedName.Namespace + "/" + namespacedName.Name
+	if m.PrometheusRules == nil {
+		m.PrometheusRules = make(map[string]*monitoringv1.PrometheusRule)
+	}
+
+	// Get or create PrometheusRule
+	pr, exists := m.PrometheusRules[key]
+	if !exists {
+		pr = &monitoringv1.PrometheusRule{
+			Spec: monitoringv1.PrometheusRuleSpec{
+				Groups: []monitoringv1.RuleGroup{},
+			},
+		}
+		pr.Name = namespacedName.Name
+		pr.Namespace = namespacedName.Namespace
+		m.PrometheusRules[key] = pr
+	}
+
+	// Find or create the group
+	var group *monitoringv1.RuleGroup
+	for i := range pr.Spec.Groups {
+		if pr.Spec.Groups[i].Name == groupName {
+			group = &pr.Spec.Groups[i]
+			break
+		}
+	}
+	if group == nil {
+		pr.Spec.Groups = append(pr.Spec.Groups, monitoringv1.RuleGroup{
+			Name:  groupName,
+			Rules: []monitoringv1.Rule{},
+		})
+		group = &pr.Spec.Groups[len(pr.Spec.Groups)-1]
+	}
+
+	// Add the new rule to the group
+	group.Rules = append(group.Rules, rule)
+
+	return nil
+}
+
+// MockPrometheusRuleInformerInterface is a mock implementation of k8s.PrometheusRuleInformerInterface
+type MockPrometheusRuleInformerInterface struct {
+	RunFunc func(ctx context.Context, callbacks k8s.PrometheusRuleInformerCallback) error
+}
+
+// Run mocks the Run method
+func (m *MockPrometheusRuleInformerInterface) Run(ctx context.Context, callbacks k8s.PrometheusRuleInformerCallback) error {
+	if m.RunFunc != nil {
+		return m.RunFunc(ctx, callbacks)
+	}
+
+	// Default implementation - just wait for context to be cancelled
+	<-ctx.Done()
+	return ctx.Err()
+}

@@ -13,20 +13,7 @@ import (
 	monitoringv1client "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 )
 
-// Ensure client implements Client
 var _ Client = (*client)(nil)
-
-// Client defines the contract for Kubernetes client operations
-type Client interface {
-	// TestConnection tests the connection to the Kubernetes cluster
-	TestConnection(ctx context.Context) error
-
-	// PrometheusRules returns the PrometheusRule interface
-	PrometheusRules() PrometheusRuleInterface
-
-	// PrometheusRuleInformer returns the PrometheusRuleInformer interface
-	PrometheusRuleInformer() PrometheusRuleInformerInterface
-}
 
 type client struct {
 	clientset             *kubernetes.Clientset
@@ -37,15 +24,7 @@ type client struct {
 	prometheusRuleInformer PrometheusRuleInformerInterface
 }
 
-// ClientOptions holds configuration options for creating a Kubernetes client
-type ClientOptions struct {
-	// KubeconfigPath specifies the path to the kubeconfig file for remote connections
-	// If empty, will try default locations or in-cluster config
-	KubeconfigPath string
-}
-
-// NewClient creates a new Kubernetes client with the given options
-func NewClient(_ context.Context, opts ClientOptions) (Client, error) {
+func newClient(_ context.Context, opts ClientOptions) (Client, error) {
 	var config *rest.Config
 	var err error
 
@@ -86,7 +65,6 @@ func NewClient(_ context.Context, opts ClientOptions) (Client, error) {
 	return c, nil
 }
 
-// TestConnection tests the connection to the Kubernetes cluster
 func (c *client) TestConnection(_ context.Context) error {
 	_, err := c.clientset.Discovery().ServerVersion()
 	if err != nil {
@@ -95,12 +73,10 @@ func (c *client) TestConnection(_ context.Context) error {
 	return nil
 }
 
-// PrometheusRules returns the PrometheusRule interface
 func (c *client) PrometheusRules() PrometheusRuleInterface {
 	return c.prometheusRuleManager
 }
 
-// PrometheusRuleInformer returns the PrometheusRuleInformer interface
 func (c *client) PrometheusRuleInformer() PrometheusRuleInformerInterface {
 	return c.prometheusRuleInformer
 }

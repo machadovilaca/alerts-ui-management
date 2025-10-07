@@ -11,16 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// PrometheusRuleInterface defines operations for managing PrometheusRules
-type PrometheusRuleInterface interface {
-	List(ctx context.Context) ([]monitoringv1.PrometheusRule, error)
-	Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error)
-	Update(ctx context.Context, pr monitoringv1.PrometheusRule) error
-	Delete(ctx context.Context, namespace string, name string) error
-
-	AddRule(ctx context.Context, namespacedName types.NamespacedName, groupName string, rule monitoringv1.Rule) error
-}
-
 type prometheusRuleManager struct {
 	clientset *monitoringv1client.Clientset
 }
@@ -31,7 +21,6 @@ func newPrometheusRuleManagerManager(clientset *monitoringv1client.Clientset) Pr
 	}
 }
 
-// List returns a list of all PrometheusRules in the cluster
 func (prm *prometheusRuleManager) List(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
 	prs, err := prm.clientset.MonitoringV1().PrometheusRules("").List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -41,7 +30,6 @@ func (prm *prometheusRuleManager) List(ctx context.Context) ([]monitoringv1.Prom
 	return prs.Items, nil
 }
 
-// Get retrieves the specified PrometheusRule resource by namespace/name
 func (prm *prometheusRuleManager) Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error) {
 	pr, err := prm.clientset.MonitoringV1().PrometheusRules(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
@@ -51,7 +39,6 @@ func (prm *prometheusRuleManager) Get(ctx context.Context, namespace string, nam
 	return pr, nil
 }
 
-// Update updates the specified PrometheusRule resource
 func (prm *prometheusRuleManager) Update(ctx context.Context, pr monitoringv1.PrometheusRule) error {
 	_, err := prm.clientset.MonitoringV1().PrometheusRules(pr.Namespace).Update(ctx, &pr, metav1.UpdateOptions{})
 	if err != nil {
@@ -61,7 +48,6 @@ func (prm *prometheusRuleManager) Update(ctx context.Context, pr monitoringv1.Pr
 	return nil
 }
 
-// Delete deletes the specified PrometheusRule resource by namespace/name
 func (prm *prometheusRuleManager) Delete(ctx context.Context, namespace string, name string) error {
 	err := prm.clientset.MonitoringV1().PrometheusRules(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
@@ -71,7 +57,6 @@ func (prm *prometheusRuleManager) Delete(ctx context.Context, namespace string, 
 	return nil
 }
 
-// AddRule adds a new rule to the specified PrometheusRule resource
 func (prm *prometheusRuleManager) AddRule(ctx context.Context, namespacedName types.NamespacedName, groupName string, rule monitoringv1.Rule) error {
 	pr, err := prm.getOrCreatePrometheusRule(ctx, namespacedName)
 	if err != nil {

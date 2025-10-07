@@ -10,17 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
-// PrometheusRuleInformerInterface defines operations for PrometheusRules informers
-type PrometheusRuleInformerInterface interface {
-	Run(ctx context.Context, callbacks PrometheusRuleInformerCallback) error
-}
-
-type PrometheusRuleInformerCallback struct {
-	OnAdd    func(pr *monitoringv1.PrometheusRule)
-	OnUpdate func(pr *monitoringv1.PrometheusRule)
-	OnDelete func(pr *monitoringv1.PrometheusRule)
-}
-
 type prometheusRuleInformer struct {
 	clientset *monitoringv1client.Clientset
 }
@@ -31,7 +20,6 @@ func newPrometheusRuleInformer(clientset *monitoringv1client.Clientset) Promethe
 	}
 }
 
-// Run sets up a watcher for PrometheusRule resources and handles events
 func (pri *prometheusRuleInformer) Run(ctx context.Context, callbacks PrometheusRuleInformerCallback) error {
 	options := metav1.ListOptions{
 		Watch: true,

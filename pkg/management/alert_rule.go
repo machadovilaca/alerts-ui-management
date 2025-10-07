@@ -5,29 +5,20 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/machadovilaca/alerts-ui-management/pkg/management/mapper"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
-	AlertRuleIdLabelKey = "auim_id"
-	DefaultGroupName    = "user-defined-rules"
+	DefaultGroupName = "user-defined-rules"
 )
 
-var volatileAnnotationKeys = map[string]bool{
-	AlertRuleIdLabelKey: true,
-}
-
 func (c *client) CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, options Options) error {
-	if alertRule.Annotations == nil {
-		alertRule.Annotations = make(map[string]string)
-	}
-
-	ruleId := GetAlertingRuleId(&alertRule)
-	alertRule.Annotations[AlertRuleIdLabelKey] = string(ruleId)
+	ruleId := c.mapper.GetAlertingRuleId(&alertRule)
 
 	// Check if rule with the same ID already exists
-	_, err := c.idMapper.FindAlertRuleById(ruleId)
+	_, err := c.mapper.FindAlertRuleById(ruleId)
 	if err == nil {
 		return errors.New("alert rule with exact config already exists")
 	}
@@ -53,7 +44,7 @@ func (c *client) CreateUserDefinedAlertRule(ctx context.Context, alertRule monit
 }
 
 func (c *client) DeleteRuleById(ctx context.Context, alertRuleId string) error {
-	prId, err := c.idMapper.FindAlertRuleById(PrometheusAlertRuleId(alertRuleId))
+	prId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
 	if err != nil {
 		return err
 	}
@@ -114,16 +105,5 @@ func (c *client) filterRulesById(rules []monitoringv1.Rule, alertRuleId string, 
 }
 
 func (c *client) shouldDeleteRule(rule monitoringv1.Rule, alertRuleId string) bool {
-	if rule.Annotations != nil {
-		id, exists := rule.Annotations[AlertRuleIdLabelKey]
-		if exists && id == alertRuleId {
-			return true
-		}
-	}
-
-	if alertRuleId == string(GetAlertingRuleId(&rule)) {
-		return true
-	}
-
-	return false
+	return alertRuleId == string(c.mapper.GetAlertingRuleId(&rule))
 }
