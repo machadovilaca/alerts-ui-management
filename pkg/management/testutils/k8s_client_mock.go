@@ -43,7 +43,7 @@ func (m *MockClient) PrometheusRuleInformer() k8s.PrometheusRuleInformerInterfac
 
 // MockPrometheusRuleInterface is a mock implementation of k8s.PrometheusRuleInterface
 type MockPrometheusRuleInterface struct {
-	ListFunc    func(ctx context.Context) ([]monitoringv1.PrometheusRule, error)
+	ListFunc    func(ctx context.Context, namespace string) ([]monitoringv1.PrometheusRule, error)
 	GetFunc     func(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error)
 	UpdateFunc  func(ctx context.Context, pr monitoringv1.PrometheusRule) error
 	DeleteFunc  func(ctx context.Context, namespace string, name string) error
@@ -53,16 +53,22 @@ type MockPrometheusRuleInterface struct {
 	PrometheusRules map[string]*monitoringv1.PrometheusRule
 }
 
+func (m *MockPrometheusRuleInterface) SetPrometheusRules(rules map[string]*monitoringv1.PrometheusRule) {
+	m.PrometheusRules = rules
+}
+
 // List mocks the List method
-func (m *MockPrometheusRuleInterface) List(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
+func (m *MockPrometheusRuleInterface) List(ctx context.Context, namespace string) ([]monitoringv1.PrometheusRule, error) {
 	if m.ListFunc != nil {
-		return m.ListFunc(ctx)
+		return m.ListFunc(ctx, namespace)
 	}
 
 	var rules []monitoringv1.PrometheusRule
 	if m.PrometheusRules != nil {
 		for _, rule := range m.PrometheusRules {
-			rules = append(rules, *rule)
+			if namespace == "" || rule.Namespace == namespace {
+				rules = append(rules, *rule)
+			}
 		}
 	}
 	return rules, nil

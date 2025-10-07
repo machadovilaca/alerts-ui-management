@@ -29,7 +29,7 @@ type Client interface {
 // PrometheusRuleInterface defines operations for managing PrometheusRules
 type PrometheusRuleInterface interface {
 	// List lists all PrometheusRules in the cluster
-	List(ctx context.Context) ([]monitoringv1.PrometheusRule, error)
+	List(ctx context.Context, namespace string) ([]monitoringv1.PrometheusRule, error)
 
 	// Create creates a new PrometheusRule
 	Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error)

@@ -4,9 +4,20 @@ import (
 	"context"
 
 	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
+	"github.com/machadovilaca/alerts-ui-management/pkg/management/mapper"
 )
 
 // New creates a new management client
 func New(ctx context.Context, k8sClient k8s.Client) Client {
-	return new(ctx, k8sClient)
+	m := mapper.New(k8sClient)
+	m.WatchPrometheusRules(ctx)
+
+	return NewWithCustomMapper(ctx, k8sClient, m)
+}
+
+func NewWithCustomMapper(ctx context.Context, k8sClient k8s.Client, m mapper.Client) Client {
+	return &client{
+		k8sClient: k8sClient,
+		mapper:    m,
+	}
 }

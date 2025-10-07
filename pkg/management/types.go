@@ -8,8 +8,11 @@ import (
 
 // Client is the interface for managing alert rules
 type Client interface {
+	// ListRules lists all alert rules in the specified PrometheusRule resource
+	ListRules(ctx context.Context, options Options) ([]monitoringv1.Rule, error)
+
 	// CreateUserDefinedAlertRule creates a new user-defined alert rule
-	CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, options Options) error
+	CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, options Options) (alertRuleId string, err error)
 
 	// DeleteRuleById deletes an alert rule by its ID
 	DeleteRuleById(ctx context.Context, alertRuleId string) error

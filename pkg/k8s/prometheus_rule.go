@@ -21,10 +21,10 @@ func newPrometheusRuleManagerManager(clientset *monitoringv1client.Clientset) Pr
 	}
 }
 
-func (prm *prometheusRuleManager) List(ctx context.Context) ([]monitoringv1.PrometheusRule, error) {
-	prs, err := prm.clientset.MonitoringV1().PrometheusRules("").List(ctx, metav1.ListOptions{})
+func (prm *prometheusRuleManager) List(ctx context.Context, namespace string) ([]monitoringv1.PrometheusRule, error) {
+	prs, err := prm.clientset.MonitoringV1().PrometheusRules(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list namespaces: %w", err)
+		return nil, err
 	}
 
 	return prs.Items, nil
