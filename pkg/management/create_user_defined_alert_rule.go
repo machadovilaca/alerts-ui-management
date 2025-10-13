@@ -12,14 +12,14 @@ const (
 	DefaultGroupName = "user-defined-rules"
 )
 
-func (c *client) CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, options Options) (string, error) {
-	if options.PrometheusRuleName == "" || options.PrometheusRuleNamespace == "" {
+func (c *client) CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, prOptions PrometheusRuleOptions) (string, error) {
+	if prOptions.Name == "" || prOptions.Namespace == "" {
 		return "", errors.New("PrometheusRule Name and Namespace must be specified")
 	}
 
 	nn := types.NamespacedName{
-		Name:      options.PrometheusRuleName,
-		Namespace: options.PrometheusRuleNamespace,
+		Name:      prOptions.Name,
+		Namespace: prOptions.Namespace,
 	}
 
 	if IsPlatformAlertRule(nn) {
@@ -33,11 +33,11 @@ func (c *client) CreateUserDefinedAlertRule(ctx context.Context, alertRule monit
 		return "", errors.New("alert rule with exact config already exists")
 	}
 
-	if options.GroupName == "" {
-		options.GroupName = DefaultGroupName
+	if prOptions.GroupName == "" {
+		prOptions.GroupName = DefaultGroupName
 	}
 
-	err = c.k8sClient.PrometheusRules().AddRule(ctx, nn, options.GroupName, alertRule)
+	err = c.k8sClient.PrometheusRules().AddRule(ctx, nn, prOptions.GroupName, alertRule)
 	if err != nil {
 		return "", err
 	}
