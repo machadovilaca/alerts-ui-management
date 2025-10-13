@@ -31,7 +31,7 @@ type PrometheusRuleInterface interface {
 	// List lists all PrometheusRules in the cluster
 	List(ctx context.Context, namespace string) ([]monitoringv1.PrometheusRule, error)
 
-	// Create creates a new PrometheusRule
+	// Get retrieves a PrometheusRule by namespace and name
 	Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error)
 
 	// Update updates an existing PrometheusRule

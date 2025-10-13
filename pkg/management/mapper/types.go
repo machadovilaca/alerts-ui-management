@@ -10,7 +10,7 @@ import (
 // PrometheusRuleId is a unique identifier for a PrometheusRule resource in Kubernetes, represented by its NamespacedName.
 type PrometheusRuleId types.NamespacedName
 
-// PrometheusAlertRuleId is an hash-based identifier for an alerting rule within a PrometheusRule, represented by a string.
+// PrometheusAlertRuleId is a hash-based identifier for an alerting rule within a PrometheusRule, represented by a string.
 type PrometheusAlertRuleId string
 
 // Client defines the interface for mapping between Prometheus alerting rules and their unique identifiers.

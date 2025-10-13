@@ -5,14 +5,19 @@ import (
 	"fmt"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/machadovilaca/alerts-ui-management/pkg/management/mapper"
 )
 
-func (c *client) DeleteRuleById(ctx context.Context, alertRuleId string) error {
+func (c *client) DeleteUserDefinedAlertRuleById(ctx context.Context, alertRuleId string) error {
 	prId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
 	if err != nil {
 		return err
+	}
+
+	if IsPlatformAlertRule(types.NamespacedName(prId)) {
+		return fmt.Errorf("cannot delete alert rule from a platform-managed PrometheusRule")
 	}
 
 	pr, err := c.k8sClient.PrometheusRules().Get(ctx, prId.Namespace, prId.Name)

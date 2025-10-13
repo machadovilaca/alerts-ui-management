@@ -13,20 +13,24 @@ const (
 )
 
 func (c *client) CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, options Options) (string, error) {
-	ruleId := c.mapper.GetAlertingRuleId(&alertRule)
-
-	// Check if rule with the same ID already exists
-	_, err := c.mapper.FindAlertRuleById(ruleId)
-	if err == nil {
-		return "", errors.New("alert rule with exact config already exists")
-	}
-
 	if options.PrometheusRuleName == "" || options.PrometheusRuleNamespace == "" {
 		return "", errors.New("PrometheusRule Name and Namespace must be specified")
 	}
+
 	nn := types.NamespacedName{
 		Name:      options.PrometheusRuleName,
 		Namespace: options.PrometheusRuleNamespace,
+	}
+
+	if IsPlatformAlertRule(nn) {
+		return "", errors.New("cannot add user-defined alert rule to a platform-managed PrometheusRule")
+	}
+
+	// Check if rule with the same ID already exists
+	ruleId := c.mapper.GetAlertingRuleId(&alertRule)
+	_, err := c.mapper.FindAlertRuleById(ruleId)
+	if err == nil {
+		return "", errors.New("alert rule with exact config already exists")
 	}
 
 	if options.GroupName == "" {

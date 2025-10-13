@@ -14,8 +14,11 @@ type Client interface {
 	// CreateUserDefinedAlertRule creates a new user-defined alert rule
 	CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, options Options) (alertRuleId string, err error)
 
-	// DeleteRuleById deletes an alert rule by its ID
-	DeleteRuleById(ctx context.Context, alertRuleId string) error
+	// UpdateUserDefinedAlertRule updates an existing user-defined alert rule by its ID
+	UpdateUserDefinedAlertRule(ctx context.Context, alertRuleId string, alertRule monitoringv1.Rule) error
+
+	// DeleteUserDefinedAlertRuleById deletes a user-defined alert rule by its ID
+	DeleteUserDefinedAlertRuleById(ctx context.Context, alertRuleId string) error
 }
 
 // Options for creating a user-defined alert rule
