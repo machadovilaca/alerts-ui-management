@@ -9,16 +9,19 @@ import (
 	"github.com/machadovilaca/alerts-ui-management/pkg/management/mapper"
 )
 
+var _ mapper.Client = &MockMapperClient{}
+
 // MockMapperClient is a simple mock for the mapper.Client interface
 type MockMapperClient struct {
-	GetAlertingRuleIdFunc        func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId
-	FindAlertRuleByIdFunc        func(alertRuleId mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error)
-	WatchPrometheusRulesFunc     func(ctx context.Context)
-	AddPrometheusRuleFunc        func(pr *monitoringv1.PrometheusRule)
-	DeletePrometheusRuleFunc     func(pr *monitoringv1.PrometheusRule)
-	WatchAlertRelabelConfigsFunc func(ctx context.Context)
-	AddAlertRelabelConfigFunc    func(arc *osmv1.AlertRelabelConfig)
-	DeleteAlertRelabelConfigFunc func(arc *osmv1.AlertRelabelConfig)
+	GetAlertingRuleIdFunc         func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId
+	FindAlertRuleByIdFunc         func(alertRuleId mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error)
+	WatchPrometheusRulesFunc      func(ctx context.Context)
+	AddPrometheusRuleFunc         func(pr *monitoringv1.PrometheusRule)
+	DeletePrometheusRuleFunc      func(pr *monitoringv1.PrometheusRule)
+	WatchAlertRelabelConfigsFunc  func(ctx context.Context)
+	AddAlertRelabelConfigFunc     func(arc *osmv1.AlertRelabelConfig)
+	DeleteAlertRelabelConfigFunc  func(arc *osmv1.AlertRelabelConfig)
+	GetAlertRelabelConfigSpecFunc func(arcId mapper.AlertRelabelConfigId) []mapper.AlertRelabelConfigSpec
 }
 
 func (m *MockMapperClient) GetAlertingRuleId(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
@@ -69,4 +72,11 @@ func (m *MockMapperClient) DeleteAlertRelabelConfig(arc *osmv1.AlertRelabelConfi
 	if m.DeleteAlertRelabelConfigFunc != nil {
 		m.DeleteAlertRelabelConfigFunc(arc)
 	}
+}
+
+func (m *MockMapperClient) GetAlertRelabelConfigSpec(arcId mapper.AlertRelabelConfigId) []mapper.AlertRelabelConfigSpec {
+	if m.GetAlertRelabelConfigSpecFunc != nil {
+		return m.GetAlertRelabelConfigSpecFunc(arcId)
+	}
+	return nil
 }

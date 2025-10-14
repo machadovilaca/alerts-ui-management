@@ -55,7 +55,7 @@ var _ = Describe("Mapper", func() {
 
 				By("verifying the result")
 				Expect(ruleId).NotTo(BeEmpty())
-				Expect(string(ruleId)).To(HaveLen(64)) // SHA256 hash should be 64 characters
+				Expect(string(ruleId)).To(HaveLen(len(alertRule.Alert) + 1 + 64)) // alertname + separator + SHA256 hash should be 64 characters
 			})
 
 			It("should generate different IDs for different alert rules", func() {
@@ -135,7 +135,7 @@ var _ = Describe("Mapper", func() {
 				Expect(ruleId).NotTo(BeEmpty())
 
 				By("testing FindAlertRuleById")
-				foundPrometheusRuleId, _, err := mapperClient.FindAlertRuleById(ruleId)
+				foundPrometheusRuleId, foundAlertRelabelConfigId, err := mapperClient.FindAlertRuleById(ruleId)
 
 				By("verifying results")
 				Expect(err).NotTo(HaveOccurred())
@@ -144,6 +144,7 @@ var _ = Describe("Mapper", func() {
 					Name:      "test-rule",
 				})
 				Expect(*foundPrometheusRuleId).To(Equal(expectedPrometheusRuleId))
+				Expect(foundAlertRelabelConfigId).To(BeNil())
 			})
 
 			It("should return the correct PrometheusRuleId when alert rule is one of multiple in the same PrometheusRule", func() {
@@ -176,13 +177,15 @@ var _ = Describe("Mapper", func() {
 					Name:      "multi-rule",
 				})
 
-				foundPrometheusRuleId1, _, err1 := mapperClient.FindAlertRuleById(ruleId1)
+				foundPrometheusRuleId1, foundAlertRelabelConfigId1, err1 := mapperClient.FindAlertRuleById(ruleId1)
 				Expect(err1).NotTo(HaveOccurred())
 				Expect(*foundPrometheusRuleId1).To(Equal(expectedPrometheusRuleId))
+				Expect(foundAlertRelabelConfigId1).To(BeNil())
 
-				foundPrometheusRuleId2, _, err2 := mapperClient.FindAlertRuleById(ruleId2)
+				foundPrometheusRuleId2, foundAlertRelabelConfigId2, err2 := mapperClient.FindAlertRuleById(ruleId2)
 				Expect(err2).NotTo(HaveOccurred())
 				Expect(*foundPrometheusRuleId2).To(Equal(expectedPrometheusRuleId))
+				Expect(foundAlertRelabelConfigId2).To(BeNil())
 			})
 		})
 

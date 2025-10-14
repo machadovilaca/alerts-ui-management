@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/machadovilaca/alerts-ui-management/pkg/management/mapper"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -58,7 +59,11 @@ func (c *client) extractAndFilterRules(pr monitoringv1.PrometheusRule, prOptions
 				continue
 			}
 
-			rules = append(rules, rule)
+			// Parse and update the rule based on relabeling configurations
+			r := c.parseRule(rule)
+			if r != nil {
+				rules = append(rules, *r)
+			}
 		}
 	}
 
@@ -95,4 +100,23 @@ func (c *client) matchesAlertRuleFilters(rule monitoringv1.Rule, pr monitoringv1
 	}
 
 	return true
+}
+
+func (c *client) parseRule(rule monitoringv1.Rule) *monitoringv1.Rule {
+	alertRuleId := c.mapper.GetAlertingRuleId(&rule)
+	if alertRuleId == "" {
+		return nil
+	}
+
+	_, arcId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
+	if err != nil {
+		return nil
+	}
+
+	rule, err = c.updateRuleBasedOnRelabelConfig(rule, arcId)
+	if err != nil {
+		return nil
+	}
+
+	return &rule
 }

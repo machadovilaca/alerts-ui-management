@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"log"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -21,7 +22,7 @@ type mapper struct {
 	mu        sync.RWMutex
 
 	prometheusRules     map[PrometheusRuleId][]PrometheusAlertRuleId
-	alertRelabelConfigs map[AlertRelabelConfigId][]PrometheusAlertRuleLabels
+	alertRelabelConfigs map[AlertRelabelConfigId][]*AlertRelabelConfigSpec
 }
 
 var _ Client = (*mapper)(nil)
@@ -73,22 +74,42 @@ func (m *mapper) GetAlertingRuleId(alertRule *monitoringv1.Rule) PrometheusAlert
 	// Generate SHA256 hash
 	hash := sha256.Sum256([]byte(hashInput))
 
-	return PrometheusAlertRuleId(fmt.Sprintf("%x", hash))
+	return PrometheusAlertRuleId(fmt.Sprintf("%s/%x", alertRule.Alert, hash))
 }
 
 func (m *mapper) FindAlertRuleById(alertRuleId PrometheusAlertRuleId) (*PrometheusRuleId, *AlertRelabelConfigId, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	for promRuleId, rules := range m.prometheusRules {
-		for _, ruleId := range rules {
-			if ruleId == alertRuleId {
-				return &promRuleId, nil, nil
+	var (
+		prId  *PrometheusRuleId
+		arcId *AlertRelabelConfigId
+	)
+
+	for id, rules := range m.prometheusRules {
+		if slices.Contains(rules, alertRuleId) {
+			prId = &id
+			break
+		}
+	}
+
+	// If the PrometheusRuleId is not found, return an error
+	if prId == nil {
+		return nil, nil, fmt.Errorf("alert rule with id %s not found", alertRuleId)
+	}
+
+	alertname := strings.SplitN(string(alertRuleId), "/", 2)[0]
+
+	for id, configs := range m.alertRelabelConfigs {
+		for _, config := range configs {
+			if config.Labels["alertname"] == alertname {
+				arcId = &id
+				break
 			}
 		}
 	}
 
-	return nil, nil, fmt.Errorf("alert rule with id %s not found", alertRuleId)
+	return prId, arcId, nil
 }
 
 func (m *mapper) WatchPrometheusRules(ctx context.Context) {
@@ -142,6 +163,24 @@ func (m *mapper) DeletePrometheusRule(pr *monitoringv1.PrometheusRule) {
 }
 
 func (m *mapper) WatchAlertRelabelConfigs(ctx context.Context) {
+	go func() {
+		callbacks := k8s.AlertRelabelConfigInformerCallback{
+			OnAdd: func(arc *osmv1.AlertRelabelConfig) {
+				m.AddAlertRelabelConfig(arc)
+			},
+			OnUpdate: func(arc *osmv1.AlertRelabelConfig) {
+				m.AddAlertRelabelConfig(arc)
+			},
+			OnDelete: func(arc *osmv1.AlertRelabelConfig) {
+				m.DeleteAlertRelabelConfig(arc)
+			},
+		}
+
+		err := m.k8sClient.AlertRelabelConfigInformer().Run(ctx, callbacks)
+		if err != nil {
+			log.Fatalf("Failed to run AlertRelabelConfig informer: %v", err)
+		}
+	}()
 }
 
 func (m *mapper) AddAlertRelabelConfig(arc *osmv1.AlertRelabelConfig) {
@@ -151,12 +190,12 @@ func (m *mapper) AddAlertRelabelConfig(arc *osmv1.AlertRelabelConfig) {
 	arcId := AlertRelabelConfigId(types.NamespacedName{Namespace: arc.Namespace, Name: arc.Name})
 	delete(m.alertRelabelConfigs, arcId)
 
-	rules := make([]PrometheusAlertRuleLabels, 0)
+	rules := make([]*AlertRelabelConfigSpec, 0)
 	for _, config := range arc.Spec.Configs {
-		if hasAlertnameLabel(config.SourceLabels) {
-			labels := parseRelabelConfigToLabels(config)
-			if labels != nil {
-				rules = append(rules, labels)
+		if slices.Contains(config.SourceLabels, "alertname") {
+			arcSpec := parseAlertRelabelConfigSpec(config)
+			if arcSpec != nil {
+				rules = append(rules, arcSpec)
 			}
 		}
 	}
@@ -164,17 +203,7 @@ func (m *mapper) AddAlertRelabelConfig(arc *osmv1.AlertRelabelConfig) {
 	m.alertRelabelConfigs[arcId] = rules
 }
 
-func hasAlertnameLabel(sourceLabels []osmv1.LabelName) bool {
-	for _, label := range sourceLabels {
-		if label == "alertname" {
-			return true
-		}
-	}
-
-	return false
-}
-
-func parseRelabelConfigToLabels(config osmv1.RelabelConfig) PrometheusAlertRuleLabels {
+func parseAlertRelabelConfigSpec(config osmv1.RelabelConfig) *AlertRelabelConfigSpec {
 	separator := config.Separator
 	if separator == "" {
 		separator = ";"
@@ -190,12 +219,16 @@ func parseRelabelConfigToLabels(config osmv1.RelabelConfig) PrometheusAlertRuleL
 		return nil
 	}
 
-	labels := make(PrometheusAlertRuleLabels)
-	for i, labelName := range config.SourceLabels {
-		labels[string(labelName)] = values[i]
+	arcSpec := &AlertRelabelConfigSpec{
+		Config: config,
+		Labels: make(map[string]string),
 	}
 
-	return labels
+	for i, labelName := range config.SourceLabels {
+		arcSpec.Labels[string(labelName)] = values[i]
+	}
+
+	return arcSpec
 }
 
 func (m *mapper) DeleteAlertRelabelConfig(arc *osmv1.AlertRelabelConfig) {
@@ -203,4 +236,21 @@ func (m *mapper) DeleteAlertRelabelConfig(arc *osmv1.AlertRelabelConfig) {
 	defer m.mu.Unlock()
 
 	delete(m.alertRelabelConfigs, AlertRelabelConfigId(types.NamespacedName{Namespace: arc.Namespace, Name: arc.Name}))
+}
+
+func (m *mapper) GetAlertRelabelConfigSpec(arcId AlertRelabelConfigId) []AlertRelabelConfigSpec {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	configs, exists := m.alertRelabelConfigs[arcId]
+	if !exists {
+		return nil
+	}
+
+	result := make([]AlertRelabelConfigSpec, len(configs))
+	for i, config := range configs {
+		result[i] = *config
+	}
+
+	return result
 }

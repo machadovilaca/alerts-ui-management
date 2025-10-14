@@ -114,12 +114,11 @@ var _ = Describe("GetRuleById", func() {
 			}
 
 			By("attempting to retrieve a nonexistent rule")
-			rule, err := client.GetRuleById(ctx, alertRuleId)
+			_, err := client.GetRuleById(ctx, alertRuleId)
 
 			By("verifying an error is returned")
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(ErrAlertRuleNotFound))
-			Expect(rule).To(BeNil())
 		})
 
 		It("should return an error when the PrometheusRule does not exist", func() {
@@ -132,11 +131,10 @@ var _ = Describe("GetRuleById", func() {
 			}
 
 			By("attempting to retrieve a rule from a nonexistent PrometheusRule")
-			rule, err := client.GetRuleById(ctx, alertRuleId)
+			_, err := client.GetRuleById(ctx, alertRuleId)
 
 			By("verifying an error is returned")
 			Expect(err).To(HaveOccurred())
-			Expect(rule).To(BeNil())
 		})
 
 		It("should return an error when the rule ID is not found in the PrometheusRule", func() {
@@ -177,13 +175,12 @@ var _ = Describe("GetRuleById", func() {
 			}
 
 			By("attempting to retrieve the rule")
-			rule, err := client.GetRuleById(ctx, alertRuleId)
+			_, err := client.GetRuleById(ctx, alertRuleId)
 
 			By("verifying an error is returned")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("alert rule with id"))
 			Expect(err.Error()).To(ContainSubstring("not found"))
-			Expect(rule).To(BeNil())
 		})
 	})
 })

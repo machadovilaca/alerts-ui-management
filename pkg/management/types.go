@@ -12,7 +12,7 @@ type Client interface {
 	ListRules(ctx context.Context, prOptions PrometheusRuleOptions, arOptions AlertRuleOptions) ([]monitoringv1.Rule, error)
 
 	// GetRuleById retrieves a specific alert rule by its ID
-	GetRuleById(ctx context.Context, alertRuleId string) (*monitoringv1.Rule, error)
+	GetRuleById(ctx context.Context, alertRuleId string) (monitoringv1.Rule, error)
 
 	// CreateUserDefinedAlertRule creates a new user-defined alert rule
 	CreateUserDefinedAlertRule(ctx context.Context, alertRule monitoringv1.Rule, prOptions PrometheusRuleOptions) (alertRuleId string, err error)

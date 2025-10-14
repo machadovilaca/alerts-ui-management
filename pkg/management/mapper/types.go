@@ -17,8 +17,11 @@ type AlertRelabelConfigId types.NamespacedName
 // PrometheusAlertRuleId is a hash-based identifier for an alerting rule within a PrometheusRule, represented by a string.
 type PrometheusAlertRuleId string
 
-// PrometheusAlertRuleLabels represents the labels associated with a Prometheus alerting rule.
-type PrometheusAlertRuleLabels map[string]string
+// AlertRelabelConfigSpec represents an AlertRelabelConfig group with its relabeling configuration and associated labels.
+type AlertRelabelConfigSpec struct {
+	Config osmv1.RelabelConfig `json:"config,omitempty"`
+	Labels map[string]string   `json:"labels,omitempty"`
+}
 
 // Client defines the interface for mapping between Prometheus alerting rules and their unique identifiers.
 type Client interface {
@@ -45,4 +48,7 @@ type Client interface {
 
 	// DeleteAlertRelabelConfig removes an AlertRelabelConfig from the mapper.
 	DeleteAlertRelabelConfig(arc *osmv1.AlertRelabelConfig)
+
+	// GetAlertRelabelConfigSpec returns the AlertRelabelConfigSpec associated with a given AlertRelabelConfigId.
+	GetAlertRelabelConfigSpec(arcId AlertRelabelConfigId) []AlertRelabelConfigSpec
 }

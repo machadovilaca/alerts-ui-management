@@ -7,6 +7,6 @@ func New(k8sClient k8s.Client) Client {
 	return &mapper{
 		k8sClient:           k8sClient,
 		prometheusRules:     make(map[PrometheusRuleId][]PrometheusAlertRuleId),
-		alertRelabelConfigs: make(map[AlertRelabelConfigId][]PrometheusAlertRuleLabels),
+		alertRelabelConfigs: make(map[AlertRelabelConfigId][]*AlertRelabelConfigSpec),
 	}
 }
