@@ -28,7 +28,7 @@ func (c *client) CreateUserDefinedAlertRule(ctx context.Context, alertRule monit
 
 	// Check if rule with the same ID already exists
 	ruleId := c.mapper.GetAlertingRuleId(&alertRule)
-	_, err := c.mapper.FindAlertRuleById(ruleId)
+	_, _, err := c.mapper.FindAlertRuleById(ruleId)
 	if err == nil {
 		return "", errors.New("alert rule with exact config already exists")
 	}

@@ -10,7 +10,7 @@ import (
 )
 
 func (c *client) GetRuleById(ctx context.Context, alertRuleId string) (*monitoringv1.Rule, error) {
-	prId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
+	prId, _, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
 	if err != nil {
 		return nil, err
 	}

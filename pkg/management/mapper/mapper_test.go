@@ -135,7 +135,7 @@ var _ = Describe("Mapper", func() {
 				Expect(ruleId).NotTo(BeEmpty())
 
 				By("testing FindAlertRuleById")
-				foundPrometheusRuleId, err := mapperClient.FindAlertRuleById(ruleId)
+				foundPrometheusRuleId, _, err := mapperClient.FindAlertRuleById(ruleId)
 
 				By("verifying results")
 				Expect(err).NotTo(HaveOccurred())
@@ -143,7 +143,7 @@ var _ = Describe("Mapper", func() {
 					Namespace: "test-namespace",
 					Name:      "test-rule",
 				})
-				Expect(foundPrometheusRuleId).To(Equal(expectedPrometheusRuleId))
+				Expect(*foundPrometheusRuleId).To(Equal(expectedPrometheusRuleId))
 			})
 
 			It("should return the correct PrometheusRuleId when alert rule is one of multiple in the same PrometheusRule", func() {
@@ -176,13 +176,13 @@ var _ = Describe("Mapper", func() {
 					Name:      "multi-rule",
 				})
 
-				foundPrometheusRuleId1, err1 := mapperClient.FindAlertRuleById(ruleId1)
+				foundPrometheusRuleId1, _, err1 := mapperClient.FindAlertRuleById(ruleId1)
 				Expect(err1).NotTo(HaveOccurred())
-				Expect(foundPrometheusRuleId1).To(Equal(expectedPrometheusRuleId))
+				Expect(*foundPrometheusRuleId1).To(Equal(expectedPrometheusRuleId))
 
-				foundPrometheusRuleId2, err2 := mapperClient.FindAlertRuleById(ruleId2)
+				foundPrometheusRuleId2, _, err2 := mapperClient.FindAlertRuleById(ruleId2)
 				Expect(err2).NotTo(HaveOccurred())
-				Expect(foundPrometheusRuleId2).To(Equal(expectedPrometheusRuleId))
+				Expect(*foundPrometheusRuleId2).To(Equal(expectedPrometheusRuleId))
 			})
 		})
 
@@ -192,7 +192,7 @@ var _ = Describe("Mapper", func() {
 				nonExistentRuleId := mapper.PrometheusAlertRuleId("non-existent-rule-id")
 
 				By("testing the method")
-				_, err := mapperClient.FindAlertRuleById(nonExistentRuleId)
+				_, _, err := mapperClient.FindAlertRuleById(nonExistentRuleId)
 
 				By("verifying results")
 				Expect(err).To(HaveOccurred())
@@ -212,7 +212,7 @@ var _ = Describe("Mapper", func() {
 				nonExistentRuleId := mapper.PrometheusAlertRuleId("definitely-non-existent-rule-id")
 
 				By("testing the method")
-				_, err := mapperClient.FindAlertRuleById(nonExistentRuleId)
+				_, _, err := mapperClient.FindAlertRuleById(nonExistentRuleId)
 
 				By("verifying results")
 				Expect(err).To(HaveOccurred())

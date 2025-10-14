@@ -1,0 +1,12 @@
+apiVersion: monitoring.openshift.io/v1
+kind: AlertRelabelConfig
+metadata:
+  name: example-relabel
+  namespace: default
+spec:
+  configs:
+    - action: Replace
+      sourceLabels: ["alertname", "severity"]
+      regex: "Alert1;critical"
+      targetLabel: "severity"
+      replacement: "warning"

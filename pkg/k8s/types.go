@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 
+	osmv1 "github.com/openshift/api/monitoring/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -24,6 +25,12 @@ type Client interface {
 
 	// PrometheusRuleInformer returns the PrometheusRuleInformer interface
 	PrometheusRuleInformer() PrometheusRuleInformerInterface
+
+	// AlertRelabelConfigs returns the AlertRelabelConfig interface
+	AlertRelabelConfigs() AlertRelabelConfigInterface
+
+	// AlertRelabelConfigInformer returns the AlertRelabelConfigInformer interface
+	AlertRelabelConfigInformer() AlertRelabelConfigInformerInterface
 }
 
 // PrometheusRuleInterface defines operations for managing PrometheusRules
@@ -60,4 +67,37 @@ type PrometheusRuleInformerCallback struct {
 
 	// OnDelete is called when a PrometheusRule is deleted
 	OnDelete func(pr *monitoringv1.PrometheusRule)
+}
+
+// AlertRelabelConfigInterface defines operations for managing AlertRelabelConfigs
+type AlertRelabelConfigInterface interface {
+	// List lists all AlertRelabelConfigs in the cluster
+	List(ctx context.Context, namespace string) ([]osmv1.AlertRelabelConfig, error)
+
+	// Get retrieves an AlertRelabelConfig by namespace and name
+	Get(ctx context.Context, namespace string, name string) (*osmv1.AlertRelabelConfig, error)
+
+	// Update updates an existing AlertRelabelConfig
+	Update(ctx context.Context, arc osmv1.AlertRelabelConfig) error
+
+	// Delete deletes an AlertRelabelConfig by namespace and name
+	Delete(ctx context.Context, namespace string, name string) error
+}
+
+// AlertRelabelConfigInformerInterface defines operations for AlertRelabelConfig informers
+type AlertRelabelConfigInformerInterface interface {
+	// Run starts the informer and sets up the provided callbacks for add, update, and delete events
+	Run(ctx context.Context, callbacks AlertRelabelConfigInformerCallback) error
+}
+
+// AlertRelabelConfigInformerCallback holds the callback functions for informer events
+type AlertRelabelConfigInformerCallback struct {
+	// OnAdd is called when a new AlertRelabelConfig is added
+	OnAdd func(arc *osmv1.AlertRelabelConfig)
+
+	// OnUpdate is called when an existing AlertRelabelConfig is updated
+	OnUpdate func(arc *osmv1.AlertRelabelConfig)
+
+	// OnDelete is called when an AlertRelabelConfig is deleted
+	OnDelete func(arc *osmv1.AlertRelabelConfig)
 }

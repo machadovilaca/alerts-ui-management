@@ -1,0 +1,10 @@
+apiVersion: monitoring.openshift.io/v1
+kind: AlertRelabelConfig
+metadata:
+  name: example-relabel
+  namespace: default
+spec:
+  configs:
+    - action: Drop
+      sourceLabels: ["alertname"]
+      regex: "Alert1"

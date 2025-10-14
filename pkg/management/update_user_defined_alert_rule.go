@@ -11,12 +11,12 @@ import (
 )
 
 func (c *client) UpdateUserDefinedAlertRule(ctx context.Context, alertRuleId string, alertRule monitoringv1.Rule) error {
-	prId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
+	prId, _, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
 	if err != nil {
 		return err
 	}
 
-	if IsPlatformAlertRule(types.NamespacedName(prId)) {
+	if IsPlatformAlertRule(types.NamespacedName(*prId)) {
 		return fmt.Errorf("cannot update alert rule in a platform-managed PrometheusRule")
 	}
 

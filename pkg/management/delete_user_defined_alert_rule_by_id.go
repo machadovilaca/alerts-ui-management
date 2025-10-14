@@ -11,12 +11,12 @@ import (
 )
 
 func (c *client) DeleteUserDefinedAlertRuleById(ctx context.Context, alertRuleId string) error {
-	prId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
+	prId, _, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
 	if err != nil {
 		return err
 	}
 
-	if IsPlatformAlertRule(types.NamespacedName(prId)) {
+	if IsPlatformAlertRule(types.NamespacedName(*prId)) {
 		return fmt.Errorf("cannot delete alert rule from a platform-managed PrometheusRule")
 	}
 

@@ -6,9 +6,8 @@ import (
 	"log"
 	"time"
 
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-
 	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
+	"github.com/machadovilaca/alerts-ui-management/pkg/management"
 )
 
 func main() {
@@ -26,24 +25,23 @@ func main() {
 
 	fmt.Println("Successfully connected to Kubernetes cluster!")
 
-	callbacks := k8s.PrometheusRuleInformerCallback{
-		OnAdd: func(pr *monitoringv1.PrometheusRule) {
-			fmt.Printf("PrometheusRule added: %s/%s\n", pr.Namespace, pr.Name)
-		},
-		OnUpdate: func(pr *monitoringv1.PrometheusRule) {
-			fmt.Printf("PrometheusRule updated: %s/%s\n", pr.Namespace, pr.Name)
-		},
-		OnDelete: func(pr *monitoringv1.PrometheusRule) {
-			fmt.Printf("PrometheusRule deleted: %s/%s\n", pr.Namespace, pr.Name)
-		},
-	}
+	mgmClient := management.New(ctx, client)
 
-	go func() {
-		err = client.PrometheusRuleInformer().Run(ctx, callbacks)
+	for {
+		rules, err := mgmClient.ListRules(
+			ctx,
+			management.PrometheusRuleOptions{Namespace: "default"},
+			management.AlertRuleOptions{},
+		)
 		if err != nil {
-			log.Fatalf("Failed to run PrometheusRule informer: %v", err)
+			log.Fatalf("Failed to list alert rules: %v", err)
 		}
-	}()
 
-	time.Sleep(10 * time.Second)
+		fmt.Printf("Found %d alert rules:\n", len(rules))
+		for _, rule := range rules {
+			fmt.Printf("- %s: %s\n", rule.Alert, rule.Labels["severity"])
+		}
+
+		time.Sleep(5 * time.Second)
+	}
 }

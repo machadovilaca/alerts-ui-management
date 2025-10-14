@@ -11,6 +11,7 @@ import (
 func New(ctx context.Context, k8sClient k8s.Client) Client {
 	m := mapper.New(k8sClient)
 	m.WatchPrometheusRules(ctx)
+	m.WatchAlertRelabelConfigs(ctx)
 
 	return NewWithCustomMapper(ctx, k8sClient, m)
 }

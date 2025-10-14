@@ -91,15 +91,7 @@ func (m ErrorMatcher) Render(e *Error) string {
 		if s, ok := e.BadValue.(string); ok {
 			buf.WriteString(fmt.Sprintf("Value=%q", s))
 		} else {
-			rv := reflect.ValueOf(e.BadValue)
-			if rv.Kind() == reflect.Pointer && !rv.IsNil() {
-				rv = rv.Elem()
-			}
-			if rv.IsValid() && rv.CanInterface() {
-				buf.WriteString(fmt.Sprintf("Value=%v", rv.Interface()))
-			} else {
-				buf.WriteString(fmt.Sprintf("Value=%v", e.BadValue))
-			}
+			buf.WriteString(fmt.Sprintf("Value=%v", e.BadValue))
 		}
 	}
 	if m.matchOrigin || m.requireOriginWhenInvalid && e.Type == ErrorTypeInvalid {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	osmv1 "github.com/openshift/api/monitoring/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -17,9 +18,10 @@ import (
 
 type mapper struct {
 	k8sClient k8s.Client
+	mu        sync.RWMutex
 
-	mu    sync.RWMutex
-	files map[PrometheusRuleId][]PrometheusAlertRuleId
+	prometheusRules     map[PrometheusRuleId][]PrometheusAlertRuleId
+	alertRelabelConfigs map[AlertRelabelConfigId][]PrometheusAlertRuleLabels
 }
 
 var _ Client = (*mapper)(nil)
@@ -74,19 +76,19 @@ func (m *mapper) GetAlertingRuleId(alertRule *monitoringv1.Rule) PrometheusAlert
 	return PrometheusAlertRuleId(fmt.Sprintf("%x", hash))
 }
 
-func (m *mapper) FindAlertRuleById(alertRuleId PrometheusAlertRuleId) (PrometheusRuleId, error) {
+func (m *mapper) FindAlertRuleById(alertRuleId PrometheusAlertRuleId) (*PrometheusRuleId, *AlertRelabelConfigId, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	for promRuleId, rules := range m.files {
+	for promRuleId, rules := range m.prometheusRules {
 		for _, ruleId := range rules {
 			if ruleId == alertRuleId {
-				return promRuleId, nil
+				return &promRuleId, nil, nil
 			}
 		}
 	}
 
-	return PrometheusRuleId{}, fmt.Errorf("alert rule with id %s not found", alertRuleId)
+	return nil, nil, fmt.Errorf("alert rule with id %s not found", alertRuleId)
 }
 
 func (m *mapper) WatchPrometheusRules(ctx context.Context) {
@@ -115,7 +117,7 @@ func (m *mapper) AddPrometheusRule(pr *monitoringv1.PrometheusRule) {
 	defer m.mu.Unlock()
 
 	promRuleId := PrometheusRuleId(types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name})
-	delete(m.files, promRuleId)
+	delete(m.prometheusRules, promRuleId)
 
 	rules := make([]PrometheusAlertRuleId, 0)
 	for _, group := range pr.Spec.Groups {
@@ -129,12 +131,76 @@ func (m *mapper) AddPrometheusRule(pr *monitoringv1.PrometheusRule) {
 		}
 	}
 
-	m.files[promRuleId] = rules
+	m.prometheusRules[promRuleId] = rules
 }
 
 func (m *mapper) DeletePrometheusRule(pr *monitoringv1.PrometheusRule) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	delete(m.files, PrometheusRuleId(types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}))
+	delete(m.prometheusRules, PrometheusRuleId(types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}))
+}
+
+func (m *mapper) WatchAlertRelabelConfigs(ctx context.Context) {
+}
+
+func (m *mapper) AddAlertRelabelConfig(arc *osmv1.AlertRelabelConfig) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	arcId := AlertRelabelConfigId(types.NamespacedName{Namespace: arc.Namespace, Name: arc.Name})
+	delete(m.alertRelabelConfigs, arcId)
+
+	rules := make([]PrometheusAlertRuleLabels, 0)
+	for _, config := range arc.Spec.Configs {
+		if hasAlertnameLabel(config.SourceLabels) {
+			labels := parseRelabelConfigToLabels(config)
+			if labels != nil {
+				rules = append(rules, labels)
+			}
+		}
+	}
+
+	m.alertRelabelConfigs[arcId] = rules
+}
+
+func hasAlertnameLabel(sourceLabels []osmv1.LabelName) bool {
+	for _, label := range sourceLabels {
+		if label == "alertname" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func parseRelabelConfigToLabels(config osmv1.RelabelConfig) PrometheusAlertRuleLabels {
+	separator := config.Separator
+	if separator == "" {
+		separator = ";"
+	}
+
+	regex := config.Regex
+	if regex == "" {
+		return nil
+	}
+
+	values := strings.Split(regex, separator)
+	if len(values) != len(config.SourceLabels) {
+		return nil
+	}
+
+	labels := make(PrometheusAlertRuleLabels)
+	for i, labelName := range config.SourceLabels {
+		labels[string(labelName)] = values[i]
+	}
+
+	return labels
+}
+
+func (m *mapper) DeleteAlertRelabelConfig(arc *osmv1.AlertRelabelConfig) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	delete(m.alertRelabelConfigs, AlertRelabelConfigId(types.NamespacedName{Namespace: arc.Namespace, Name: arc.Name}))
 }
