@@ -20,6 +20,9 @@ type Client interface {
 	// TestConnection tests the connection to the Kubernetes cluster
 	TestConnection(ctx context.Context) error
 
+	// PrometheusAlerts retrieves active Prometheus alerts
+	PrometheusAlerts() PrometheusAlertsInterface
+
 	// PrometheusRules returns the PrometheusRule interface
 	PrometheusRules() PrometheusRuleInterface
 
@@ -31,6 +34,12 @@ type Client interface {
 
 	// AlertRelabelConfigInformer returns the AlertRelabelConfigInformer interface
 	AlertRelabelConfigInformer() AlertRelabelConfigInformerInterface
+}
+
+// PrometheusAlertsInterface defines operations for managing PrometheusAlerts
+type PrometheusAlertsInterface interface {
+	// GetActiveAlerts retrieves active Prometheus alerts
+	GetActiveAlerts(ctx context.Context) ([]ActiveAlert, error)
 }
 
 // PrometheusRuleInterface defines operations for managing PrometheusRules

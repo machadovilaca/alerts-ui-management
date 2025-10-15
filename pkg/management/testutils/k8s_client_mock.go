@@ -14,6 +14,7 @@ import (
 // MockClient is a mock implementation of k8s.Client interface
 type MockClient struct {
 	TestConnectionFunc             func(ctx context.Context) error
+	PrometheusAlertsFunc           func() k8s.PrometheusAlertsInterface
 	PrometheusRulesFunc            func() k8s.PrometheusRuleInterface
 	PrometheusRuleInformerFunc     func() k8s.PrometheusRuleInformerInterface
 	AlertRelabelConfigsFunc        func() k8s.AlertRelabelConfigInterface
@@ -26,6 +27,14 @@ func (m *MockClient) TestConnection(ctx context.Context) error {
 		return m.TestConnectionFunc(ctx)
 	}
 	return nil
+}
+
+// PrometheusAlerts mocks the PrometheusAlerts method
+func (m *MockClient) PrometheusAlerts() k8s.PrometheusAlertsInterface {
+	if m.PrometheusAlertsFunc != nil {
+		return m.PrometheusAlertsFunc()
+	}
+	return &MockPrometheusAlertsInterface{}
 }
 
 // PrometheusRules mocks the PrometheusRules method
@@ -58,6 +67,30 @@ func (m *MockClient) AlertRelabelConfigInformer() k8s.AlertRelabelConfigInformer
 		return m.AlertRelabelConfigInformerFunc()
 	}
 	return &MockAlertRelabelConfigInformerInterface{}
+}
+
+// MockPrometheusAlertsInterface is a mock implementation of k8s.PrometheusAlertsInterface
+type MockPrometheusAlertsInterface struct {
+	GetActiveAlertsFunc func(ctx context.Context) ([]k8s.ActiveAlert, error)
+
+	// Storage for test data
+	ActiveAlerts []k8s.ActiveAlert
+}
+
+func (m *MockPrometheusAlertsInterface) SetActiveAlerts(alerts []k8s.ActiveAlert) {
+	m.ActiveAlerts = alerts
+}
+
+// GetActiveAlerts mocks the GetActiveAlerts method
+func (m *MockPrometheusAlertsInterface) GetActiveAlerts(ctx context.Context) ([]k8s.ActiveAlert, error) {
+	if m.GetActiveAlertsFunc != nil {
+		return m.GetActiveAlertsFunc(ctx)
+	}
+
+	if m.ActiveAlerts != nil {
+		return m.ActiveAlerts, nil
+	}
+	return []k8s.ActiveAlert{}, nil
 }
 
 // MockPrometheusRuleInterface is a mock implementation of k8s.PrometheusRuleInterface

@@ -22,6 +22,8 @@ type client struct {
 	osmv1clientset        *osmv1client.Clientset
 	config                *rest.Config
 
+	prometheusAlerts PrometheusAlertsInterface
+
 	prometheusRuleManager  PrometheusRuleInterface
 	prometheusRuleInformer PrometheusRuleInformerInterface
 
@@ -70,6 +72,8 @@ func newClient(_ context.Context, opts ClientOptions) (Client, error) {
 		config:                config,
 	}
 
+	c.prometheusAlerts = newPrometheusAlerts(clientset, config)
+
 	c.prometheusRuleManager = newPrometheusRuleManagerManager(monitoringv1clientset)
 	c.prometheusRuleInformer = newPrometheusRuleInformer(monitoringv1clientset)
 
@@ -85,6 +89,10 @@ func (c *client) TestConnection(_ context.Context) error {
 		return fmt.Errorf("failed to connect to cluster: %w", err)
 	}
 	return nil
+}
+
+func (c *client) PrometheusAlerts() PrometheusAlertsInterface {
+	return c.prometheusAlerts
 }
 
 func (c *client) PrometheusRules() PrometheusRuleInterface {
