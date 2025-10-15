@@ -77,6 +77,9 @@ type AlertRelabelConfigInterface interface {
 	// Get retrieves an AlertRelabelConfig by namespace and name
 	Get(ctx context.Context, namespace string, name string) (*osmv1.AlertRelabelConfig, error)
 
+	// Create creates a new AlertRelabelConfig
+	Create(ctx context.Context, arc osmv1.AlertRelabelConfig) (*osmv1.AlertRelabelConfig, error)
+
 	// Update updates an existing AlertRelabelConfig
 	Update(ctx context.Context, arc osmv1.AlertRelabelConfig) error
 

@@ -201,6 +201,7 @@ func (m *MockPrometheusRuleInformerInterface) Run(ctx context.Context, callbacks
 type MockAlertRelabelConfigInterface struct {
 	ListFunc   func(ctx context.Context, namespace string) ([]osmv1.AlertRelabelConfig, error)
 	GetFunc    func(ctx context.Context, namespace string, name string) (*osmv1.AlertRelabelConfig, error)
+	CreateFunc func(ctx context.Context, arc osmv1.AlertRelabelConfig) (*osmv1.AlertRelabelConfig, error)
 	UpdateFunc func(ctx context.Context, arc osmv1.AlertRelabelConfig) error
 	DeleteFunc func(ctx context.Context, namespace string, name string) error
 
@@ -242,6 +243,20 @@ func (m *MockAlertRelabelConfigInterface) Get(ctx context.Context, namespace str
 		}
 	}
 	return nil, errors.New("AlertRelabelConfig not found")
+}
+
+// Create mocks the Create method
+func (m *MockAlertRelabelConfigInterface) Create(ctx context.Context, arc osmv1.AlertRelabelConfig) (*osmv1.AlertRelabelConfig, error) {
+	if m.CreateFunc != nil {
+		return m.CreateFunc(ctx, arc)
+	}
+
+	key := arc.Namespace + "/" + arc.Name
+	if m.AlertRelabelConfigs == nil {
+		m.AlertRelabelConfigs = make(map[string]*osmv1.AlertRelabelConfig)
+	}
+	m.AlertRelabelConfigs[key] = &arc
+	return &arc, nil
 }
 
 // Update mocks the Update method

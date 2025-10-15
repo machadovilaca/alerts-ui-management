@@ -22,6 +22,10 @@ type Client interface {
 
 	// DeleteUserDefinedAlertRuleById deletes a user-defined alert rule by its ID
 	DeleteUserDefinedAlertRuleById(ctx context.Context, alertRuleId string) error
+
+	// UpdatePlatformAlertRule updates an existing platform alert rule by its ID
+	// Platform alert rules can only have the labels updated through AlertRelabelConfigs
+	UpdatePlatformAlertRule(ctx context.Context, alertRuleId string, alertRule monitoringv1.Rule) error
 }
 
 // PrometheusRuleOptions specifies options for selecting PrometheusRule resources and groups
