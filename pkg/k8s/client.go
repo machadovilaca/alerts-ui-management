@@ -74,7 +74,7 @@ func newClient(_ context.Context, opts ClientOptions) (Client, error) {
 
 	c.prometheusAlerts = newPrometheusAlerts(clientset, config)
 
-	c.prometheusRuleManager = newPrometheusRuleManagerManager(monitoringv1clientset)
+	c.prometheusRuleManager = newPrometheusRuleManager(monitoringv1clientset)
 	c.prometheusRuleInformer = newPrometheusRuleInformer(monitoringv1clientset)
 
 	c.alertRelabelConfigManager = newAlertRelabelConfigManager(osmv1clientset)

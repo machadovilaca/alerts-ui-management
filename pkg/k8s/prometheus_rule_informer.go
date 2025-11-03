@@ -29,10 +29,11 @@ func (pri *prometheusRuleInformer) Run(ctx context.Context, callbacks Prometheus
 	if err != nil {
 		return err
 	}
+	defer watcher.Stop()
 
 	ch := watcher.ResultChan()
 	for event := range ch {
-		pod, ok := event.Object.(*monitoringv1.PrometheusRule)
+		pr, ok := event.Object.(*monitoringv1.PrometheusRule)
 		if !ok {
 			log.Printf("Unexpected type: %v", event.Object)
 			continue
@@ -41,15 +42,15 @@ func (pri *prometheusRuleInformer) Run(ctx context.Context, callbacks Prometheus
 		switch event.Type {
 		case watch.Added:
 			if callbacks.OnAdd != nil {
-				callbacks.OnAdd(pod)
+				callbacks.OnAdd(pr)
 			}
 		case watch.Modified:
 			if callbacks.OnUpdate != nil {
-				callbacks.OnUpdate(pod)
+				callbacks.OnUpdate(pr)
 			}
 		case watch.Deleted:
 			if callbacks.OnDelete != nil {
-				callbacks.OnDelete(pod)
+				callbacks.OnDelete(pr)
 			}
 		case watch.Error:
 			log.Printf("Error occurred while watching PrometheusRule: %s\n", event.Object)

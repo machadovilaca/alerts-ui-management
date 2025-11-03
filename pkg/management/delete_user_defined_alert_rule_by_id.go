@@ -56,9 +56,10 @@ func (c *client) DeleteUserDefinedAlertRuleById(ctx context.Context, alertRuleId
 				return fmt.Errorf("failed to update PrometheusRule %s/%s: %w", pr.Namespace, pr.Name, err)
 			}
 		}
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("alert rule with id %s not found", alertRuleId)
 }
 
 func (c *client) filterRulesById(rules []monitoringv1.Rule, alertRuleId string, updated *bool) []monitoringv1.Rule {

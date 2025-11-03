@@ -74,7 +74,7 @@ func (m *mapper) GetAlertingRuleId(alertRule *monitoringv1.Rule) PrometheusAlert
 	// Generate SHA256 hash
 	hash := sha256.Sum256([]byte(hashInput))
 
-	return PrometheusAlertRuleId(fmt.Sprintf("%s/%x", alertRule.Alert, hash))
+	return PrometheusAlertRuleId(fmt.Sprintf("%s/%x", name, hash))
 }
 
 func (m *mapper) FindAlertRuleById(alertRuleId PrometheusAlertRuleId) (*PrometheusRuleId, *AlertRelabelConfigId, error) {

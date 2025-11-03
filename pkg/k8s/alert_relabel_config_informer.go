@@ -29,6 +29,7 @@ func (arci *alertRelabelConfigInformer) Run(ctx context.Context, callbacks Alert
 	if err != nil {
 		return err
 	}
+	defer watcher.Stop()
 
 	ch := watcher.ResultChan()
 	for event := range ch {

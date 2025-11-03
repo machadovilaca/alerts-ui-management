@@ -15,7 +15,7 @@ type prometheusRuleManager struct {
 	clientset *monitoringv1client.Clientset
 }
 
-func newPrometheusRuleManagerManager(clientset *monitoringv1client.Clientset) PrometheusRuleInterface {
+func newPrometheusRuleManager(clientset *monitoringv1client.Clientset) PrometheusRuleInterface {
 	return &prometheusRuleManager{
 		clientset: clientset,
 	}

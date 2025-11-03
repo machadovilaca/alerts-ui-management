@@ -76,9 +76,10 @@ func (c *client) updateRuleBasedOnRelabelConfig(rule monitoringv1.Rule, arcId *m
 }
 
 func handleReplaceAction(rule monitoringv1.Rule, spec mapper.AlertRelabelConfigSpec) (monitoringv1.Rule, error) {
-	if spec.Config.TargetLabel == "severity" {
-		rule.Labels["severity"] = spec.Config.Replacement
+	if rule.Labels == nil {
+		rule.Labels = make(map[string]string)
 	}
+	rule.Labels[spec.Config.TargetLabel] = spec.Config.Replacement
 
 	return rule, nil
 }
