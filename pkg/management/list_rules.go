@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/machadovilaca/alerts-ui-management/pkg/management/mapper"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/machadovilaca/alerts-ui-management/pkg/management/mapper"
 )
 
 func (c *client) ListRules(ctx context.Context, prOptions PrometheusRuleOptions, arOptions AlertRuleOptions) ([]monitoringv1.Rule, error) {
