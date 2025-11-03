@@ -5,6 +5,8 @@ go 1.24.0
 toolchain go1.24.7
 
 require (
+	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-playground/form/v4 v4.3.0
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
 	github.com/openshift/api v0.0.0-20251013165757-fe48e8fd548b

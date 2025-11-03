@@ -8,6 +8,9 @@ github.com/emicklei/go-restful/v3/log
 # github.com/fxamacker/cbor/v2 v2.9.0
 ## explicit; go 1.20
 github.com/fxamacker/cbor/v2
+# github.com/go-chi/chi/v5 v5.2.3
+## explicit; go 1.20
+github.com/go-chi/chi/v5
 # github.com/go-logr/logr v1.4.3
 ## explicit; go 1.18
 github.com/go-logr/logr
@@ -22,6 +25,9 @@ github.com/go-openapi/jsonreference/internal
 # github.com/go-openapi/swag v0.23.1
 ## explicit; go 1.20
 github.com/go-openapi/swag
+# github.com/go-playground/form/v4 v4.3.0
+## explicit; go 1.21
+github.com/go-playground/form/v4
 # github.com/go-task/slim-sprig/v3 v3.0.0
 ## explicit; go 1.20
 github.com/go-task/slim-sprig/v3

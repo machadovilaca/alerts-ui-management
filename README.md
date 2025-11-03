@@ -29,69 +29,71 @@ alerts-ui-management/
     └── *.yaml                  # Example PrometheusRule resources
 ```
 
-## Run the Automated Demo Script
+## HTTP API Endpoints
 
-The demo script creates, updates, and deletes PrometheusRule and AlertRelabelConfig resources to demonstrate the library's capabilities:
+The library includes HTTP endpoints for accessing alert data. When running the demo application (`go run main.go`), the following endpoints are available:
 
-**Expected Behavior:**
+### Available Endpoints
 
-**To observe the changes:**
-- Run `go run main.go` in one terminal
-- Run `./hack/examples/demo.sh` in another terminal
-- Watch the first terminal for real-time updates as rules are created, modified, and deleted
+#### GET `/api/v1/alerting/health`
+Health check endpoint that returns the service status.
 
-Each step waits 10 seconds, giving you time to observe the changes in the monitoring output.
-
-**Initial State:**
-```
-Watching for alert rules in 'default' namespace every 5 seconds...
-
-Found 0 alert rules in 'default' namespace:
+**Example:**
+```bash
+curl http://localhost:8080/api/v1/alerting/health
 ```
 
-1. **Step 1**: Creates a PrometheusRule with Alert1
-   - Should show Alert1 with severity `warning`
-   ```
-   Found 1 alert rules in 'default' namespace:
-   - Alert1: warning
-   ```
+**Response:**
+```json
+{"status":"ok"}
+```
 
-2. **Step 2**: Creates an AlertRelabelConfig to drop Alert1
-   - No alert rules should be found
-   ```
-   Found 0 alert rules in 'default' namespace:
-   ```
+#### GET `/api/v1/alerting/alerts`
+Retrieves active alerts from the cluster, with optional label-based filtering.
 
-3. **Step 3**: Deletes the AlertRelabelConfig
-   - Alert1 becomes visible with severity `warning`
-   ```
-   Found 1 alert rules in 'default' namespace:
-   - Alert1: warning
-   ```
+**Query Parameters:**
+- `labels[key]=value` - Filter alerts by label key-value pairs
 
-4. **Step 4**: Updates the PrometheusRule - changes Alert1 severity to critical
-   - Should show Alert1 with severity `critical`
-   ```
-   Found 1 alert rules in 'default' namespace:
-   - Alert1: critical
-   ```
+**Examples:**
 
-5. **Step 5**: Creates an AlertRelabelConfig to change Alert1 severity to warning
-   - Alert1 appears with severity `warning` (due to relabeling)
-   ```
-   Found 1 alert rules in 'default' namespace:
-   - Alert1: warning
-   ```
+Get all active alerts:
+```bash
+curl http://localhost:8080/api/v1/alerting/alerts
+```
 
-6. **Step 6**: Deletes the AlertRelabelConfig
-   - Alert1 severity changes back to `critical`
-   ```
-   Found 1 alert rules in 'default' namespace:
-   - Alert1: critical
-   ```
+Filter alerts by severity:
+```bash
+curl --globoff "http://localhost:8080/api/v1/alerting/alerts?labels[severity]=warning"
+```
 
-7. **Step 7**: Deletes the PrometheusRule
-   - No alert rules should be found
-   ```
-   Found 0 alert rules in 'default' namespace:
-   ```
+Filter alerts by multiple labels:
+```bash
+curl --globoff "http://localhost:8080/api/v1/alerting/alerts?labels[severity]=warning&labels[namespace]=openshift-monitoring"
+```
+
+**Response:**
+```json
+{
+  "Alerts": [
+    {
+      "name": "AlertName",
+      "severity": "warning",
+      "labels": {
+        "alertname": "AlertName",
+        "severity": "warning",
+        "namespace": "default"
+      },
+      "annotations": {
+        "description": "Alert description",
+        "summary": "Alert summary"
+      },
+      "state": "firing",
+      "activeAt": "2025-11-03T10:30:00Z"
+    }
+  ]
+}
+```
+
+## Getting Started
+
+An automated demo script is available to showcase the library's capabilities with PrometheusRule and AlertRelabelConfig resources. See the [demo documentation](hack/examples/README.md) for detailed instructions and expected behavior.
