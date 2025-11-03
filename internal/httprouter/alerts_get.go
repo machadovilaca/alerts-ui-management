@@ -13,7 +13,7 @@ type GetAlertsQueryParams struct {
 }
 
 type GetAlertsResponse struct {
-	Alerts []k8s.ActiveAlert
+	Alerts []k8s.ActiveAlert `json:"alerts"`
 }
 
 func (hr *httpRouter) GetAlerts(w http.ResponseWriter, req *http.Request) {

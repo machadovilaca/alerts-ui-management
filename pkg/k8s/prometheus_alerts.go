@@ -15,13 +15,13 @@ import (
 )
 
 const (
-	thanosQuerierRouteNamespace = "openshift-monitoring"
-	thanosQuerierRouteName      = "thanos-querier"
-	thanosQuerierAPIPath        = "/v1/alerts"
+	alertmanagerRouteNamespace = "openshift-monitoring"
+	alertmanagerRouteName      = "alertmanager-main"
+	alertmanagerAPIPath        = "/v2/alerts"
 )
 
 var (
-	thanosQuerierRoutePath = fmt.Sprintf("/apis/route.openshift.io/v1/namespaces/%s/routes/%s", thanosQuerierRouteNamespace, thanosQuerierRouteName)
+	alertmanagerRoutePath = fmt.Sprintf("/apis/route.openshift.io/v1/namespaces/%s/routes/%s", alertmanagerRouteNamespace, alertmanagerRouteName)
 )
 
 type prometheusAlerts struct {
@@ -38,18 +38,19 @@ type ActiveAlert struct {
 	ActiveAt    time.Time         `json:"activeAt"`
 }
 
-type prometheusAlertsResponse struct {
-	Status string `json:"status"`
-	Data   struct {
-		Alerts []struct {
-			Labels      map[string]string `json:"labels"`
-			Annotations map[string]string `json:"annotations"`
-			State       string            `json:"state"`
-			ActiveAt    time.Time         `json:"activeAt"`
-			Value       string            `json:"value,omitempty"`
-		} `json:"alerts"`
-	} `json:"data"`
+type alertmanagerAlert struct {
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+	StartsAt    time.Time         `json:"startsAt"`
+	EndsAt      time.Time         `json:"endsAt"`
+	Status      struct {
+		State       string   `json:"state"`
+		SilencedBy  []string `json:"silencedBy"`
+		InhibitedBy []string `json:"inhibitedBy"`
+	} `json:"status"`
 }
+
+type alertmanagerAlertsResponse []alertmanagerAlert
 
 func newPrometheusAlerts(clientset *kubernetes.Clientset, config *rest.Config) PrometheusAlertsInterface {
 	return &prometheusAlerts{
@@ -64,24 +65,22 @@ func (pa prometheusAlerts) GetActiveAlerts(ctx context.Context) ([]ActiveAlert, 
 		return nil, err
 	}
 
-	var alertsResp prometheusAlertsResponse
+	var alertsResp alertmanagerAlertsResponse
 	if err := json.Unmarshal(raw, &alertsResp); err != nil {
-		return nil, fmt.Errorf("decode prometheus response: %w", err)
-	}
-	if alertsResp.Status != "success" {
-		return nil, fmt.Errorf("prometheus returned status=%s", alertsResp.Status)
+		return nil, fmt.Errorf("decode alertmanager response: %w", err)
 	}
 
-	out := make([]ActiveAlert, 0, len(alertsResp.Data.Alerts))
-	for _, a := range alertsResp.Data.Alerts {
-		if a.State == "firing" || a.State == "pending" {
+	out := make([]ActiveAlert, 0, len(alertsResp))
+	for _, a := range alertsResp {
+		// Alertmanager v2 API uses "active" or "suppressed" state
+		if a.Status.State == "active" {
 			out = append(out, ActiveAlert{
 				Name:        a.Labels["alertname"],
 				Severity:    a.Labels["severity"],
 				Labels:      a.Labels,
 				Annotations: a.Annotations,
-				State:       a.State,
-				ActiveAt:    a.ActiveAt,
+				State:       "firing", // Map "active" to "firing" for consistency
+				ActiveAt:    a.StartsAt,
 			})
 		}
 	}
@@ -91,11 +90,11 @@ func (pa prometheusAlerts) GetActiveAlerts(ctx context.Context) ([]ActiveAlert, 
 func (pa prometheusAlerts) getAlertsViaProxy(ctx context.Context) ([]byte, error) {
 	route, err := pa.clientset.CoreV1().RESTClient().
 		Get().
-		AbsPath(thanosQuerierRoutePath).
+		AbsPath(alertmanagerRoutePath).
 		DoRaw(ctx)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to get thanos-querier route: %w", err)
+		return nil, fmt.Errorf("failed to get alertmanager route: %w", err)
 	}
 
 	var routeObj struct {
@@ -108,7 +107,7 @@ func (pa prometheusAlerts) getAlertsViaProxy(ctx context.Context) ([]byte, error
 		return nil, fmt.Errorf("failed to parse route: %w", err)
 	}
 
-	url := fmt.Sprintf("https://%s%s%s", routeObj.Spec.Host, routeObj.Spec.Path, thanosQuerierAPIPath)
+	url := fmt.Sprintf("https://%s%s%s", routeObj.Spec.Host, routeObj.Spec.Path, alertmanagerAPIPath)
 
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},

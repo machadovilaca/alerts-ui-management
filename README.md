@@ -74,7 +74,7 @@ curl --globoff "http://localhost:8080/api/v1/alerting/alerts?labels[severity]=wa
 **Response:**
 ```json
 {
-  "Alerts": [
+  "alerts": [
     {
       "name": "AlertName",
       "severity": "warning",
