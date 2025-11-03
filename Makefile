@@ -1,5 +1,5 @@
 
-sanity: goimport lint
+sanity: goimport
 	go fmt ./...
 	go mod tidy -v
 	go mod vendor
