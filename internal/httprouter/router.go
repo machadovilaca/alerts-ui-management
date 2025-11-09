@@ -24,6 +24,7 @@ func New(k8sClient k8s.Client, managementClient management.Client) *chi.Mux {
 
 	r.Get("/api/v1/alerting/health", httpRouter.GetHealth)
 	r.Get("/api/v1/alerting/alerts", httpRouter.GetAlerts)
+	r.Delete("/api/v1/alerting/rules", httpRouter.BulkDeleteUserDefinedAlertRules)
 
 	return r
 }
