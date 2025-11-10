@@ -17,19 +17,13 @@ type AlertRelabelConfigId types.NamespacedName
 // PrometheusAlertRuleId is a hash-based identifier for an alerting rule within a PrometheusRule, represented by a string.
 type PrometheusAlertRuleId string
 
-// AlertRelabelConfigSpec represents an AlertRelabelConfig group with its relabeling configuration and associated labels.
-type AlertRelabelConfigSpec struct {
-	Config osmv1.RelabelConfig `json:"config,omitempty"`
-	Labels map[string]string   `json:"labels,omitempty"`
-}
-
 // Client defines the interface for mapping between Prometheus alerting rules and their unique identifiers.
 type Client interface {
 	// GetAlertingRuleId returns the unique identifier for a given alerting rule.
 	GetAlertingRuleId(alertRule *monitoringv1.Rule) PrometheusAlertRuleId
 
 	// FindAlertRuleById returns the PrometheusRuleId for a given alerting rule ID.
-	FindAlertRuleById(alertRuleId PrometheusAlertRuleId) (*PrometheusRuleId, *AlertRelabelConfigId, error)
+	FindAlertRuleById(alertRuleId PrometheusAlertRuleId) (*PrometheusRuleId, error)
 
 	// WatchPrometheusRules starts watching for changes to PrometheusRules.
 	WatchPrometheusRules(ctx context.Context)
@@ -49,6 +43,6 @@ type Client interface {
 	// DeleteAlertRelabelConfig removes an AlertRelabelConfig from the mapper.
 	DeleteAlertRelabelConfig(arc *osmv1.AlertRelabelConfig)
 
-	// GetAlertRelabelConfigSpec returns the AlertRelabelConfigSpec associated with a given AlertRelabelConfigId.
-	GetAlertRelabelConfigSpec(arcId AlertRelabelConfigId) []AlertRelabelConfigSpec
+	// GetAlertRelabelConfigSpec returns the RelabelConfigs that match the given alert rule's labels.
+	GetAlertRelabelConfigSpec(alertRule *monitoringv1.Rule) []osmv1.RelabelConfig
 }
