@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -e
+
+echo "Running pre-commit checks..."
+echo ""
+
+echo "Running tests..."
+make test
+echo ""
+
+echo "Running linter..."
+make lint
+echo ""
+
+echo "Running sanity checks..."
+make sanity
+echo ""
+
+echo "All pre-commit checks passed!"
+

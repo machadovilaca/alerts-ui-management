@@ -16,3 +16,8 @@ lint:
 
 test:
 	go test -v ./...
+
+setup-hooks:
+	cp hack/git/hooks/pre-commit .git/hooks/pre-commit
+	chmod +x .git/hooks/pre-commit
+	@echo "Git hooks setup successfully!"
