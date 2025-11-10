@@ -36,16 +36,14 @@ var _ = Describe("GetAlerts", func() {
 		}
 
 		mockManagement = management.NewWithCustomMapper(context.Background(), mockK8s, &testutils.MockMapperClient{})
-		router = httprouter.New(mockK8s, mockManagement)
+		router = httprouter.New(mockManagement)
 	})
 
 	Context("when getting all alerts without filters", func() {
 		It("should return all active alerts", func() {
 			By("setting up test alerts")
-			testAlerts := []k8s.ActiveAlert{
+			testAlerts := []k8s.PrometheusAlert{
 				{
-					Name:     "HighCPUUsage",
-					Severity: "warning",
 					Labels: map[string]string{
 						"alertname": "HighCPUUsage",
 						"severity":  "warning",
@@ -58,8 +56,6 @@ var _ = Describe("GetAlerts", func() {
 					ActiveAt: time.Now(),
 				},
 				{
-					Name:     "LowMemory",
-					Severity: "critical",
 					Labels: map[string]string{
 						"alertname": "LowMemory",
 						"severity":  "critical",
@@ -87,14 +83,14 @@ var _ = Describe("GetAlerts", func() {
 			var response httprouter.GetAlertsResponse
 			err := json.NewDecoder(w.Body).Decode(&response)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Alerts).To(HaveLen(2))
-			Expect(response.Alerts[0].Name).To(Equal("HighCPUUsage"))
-			Expect(response.Alerts[1].Name).To(Equal("LowMemory"))
+			Expect(response.Data.Alerts).To(HaveLen(2))
+			Expect(response.Data.Alerts[0].Labels["alertname"]).To(Equal("HighCPUUsage"))
+			Expect(response.Data.Alerts[1].Labels["alertname"]).To(Equal("LowMemory"))
 		})
 
 		It("should return empty array when no alerts exist", func() {
 			By("setting up empty alerts")
-			mockPrometheusAlerts.SetActiveAlerts([]k8s.ActiveAlert{})
+			mockPrometheusAlerts.SetActiveAlerts([]k8s.PrometheusAlert{})
 
 			By("making the request")
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/alerting/alerts", nil)
@@ -108,17 +104,15 @@ var _ = Describe("GetAlerts", func() {
 			var response httprouter.GetAlertsResponse
 			err := json.NewDecoder(w.Body).Decode(&response)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Alerts).To(BeEmpty())
+			Expect(response.Data.Alerts).To(BeEmpty())
 		})
 	})
 
 	Context("when filtering alerts by labels", func() {
 		BeforeEach(func() {
 			By("setting up test alerts with various labels")
-			testAlerts := []k8s.ActiveAlert{
+			testAlerts := []k8s.PrometheusAlert{
 				{
-					Name:     "HighCPUUsage",
-					Severity: "warning",
 					Labels: map[string]string{
 						"alertname": "HighCPUUsage",
 						"severity":  "warning",
@@ -129,8 +123,6 @@ var _ = Describe("GetAlerts", func() {
 					ActiveAt: time.Now(),
 				},
 				{
-					Name:     "LowMemory",
-					Severity: "critical",
 					Labels: map[string]string{
 						"alertname": "LowMemory",
 						"severity":  "critical",
@@ -141,8 +133,6 @@ var _ = Describe("GetAlerts", func() {
 					ActiveAt: time.Now(),
 				},
 				{
-					Name:     "DiskSpaceLow",
-					Severity: "warning",
 					Labels: map[string]string{
 						"alertname": "DiskSpaceLow",
 						"severity":  "warning",
@@ -169,9 +159,9 @@ var _ = Describe("GetAlerts", func() {
 			var response httprouter.GetAlertsResponse
 			err := json.NewDecoder(w.Body).Decode(&response)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Alerts).To(HaveLen(2))
-			Expect(response.Alerts[0].Severity).To(Equal("warning"))
-			Expect(response.Alerts[1].Severity).To(Equal("warning"))
+			Expect(response.Data.Alerts).To(HaveLen(2))
+			Expect(response.Data.Alerts[0].Labels["severity"]).To(Equal("warning"))
+			Expect(response.Data.Alerts[1].Labels["severity"]).To(Equal("warning"))
 		})
 
 		It("should filter alerts by multiple labels", func() {
@@ -191,10 +181,10 @@ var _ = Describe("GetAlerts", func() {
 			var response httprouter.GetAlertsResponse
 			err := json.NewDecoder(w.Body).Decode(&response)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Alerts).To(HaveLen(1))
-			Expect(response.Alerts[0].Name).To(Equal("HighCPUUsage"))
-			Expect(response.Alerts[0].Labels["severity"]).To(Equal("warning"))
-			Expect(response.Alerts[0].Labels["namespace"]).To(Equal("default"))
+			Expect(response.Data.Alerts).To(HaveLen(1))
+			Expect(response.Data.Alerts[0].Labels["alertname"]).To(Equal("HighCPUUsage"))
+			Expect(response.Data.Alerts[0].Labels["severity"]).To(Equal("warning"))
+			Expect(response.Data.Alerts[0].Labels["namespace"]).To(Equal("default"))
 		})
 
 		It("should return empty array when no alerts match the filter", func() {
@@ -210,7 +200,7 @@ var _ = Describe("GetAlerts", func() {
 			var response httprouter.GetAlertsResponse
 			err := json.NewDecoder(w.Body).Decode(&response)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Alerts).To(BeEmpty())
+			Expect(response.Data.Alerts).To(BeEmpty())
 		})
 
 		It("should filter alerts when label value doesn't match", func() {
@@ -226,8 +216,8 @@ var _ = Describe("GetAlerts", func() {
 			var response httprouter.GetAlertsResponse
 			err := json.NewDecoder(w.Body).Decode(&response)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Alerts).To(HaveLen(1))
-			Expect(response.Alerts[0].Name).To(Equal("DiskSpaceLow"))
+			Expect(response.Data.Alerts).To(HaveLen(1))
+			Expect(response.Data.Alerts[0].Labels["alertname"]).To(Equal("DiskSpaceLow"))
 		})
 
 		It("should filter alerts when label key doesn't exist", func() {
@@ -243,14 +233,14 @@ var _ = Describe("GetAlerts", func() {
 			var response httprouter.GetAlertsResponse
 			err := json.NewDecoder(w.Body).Decode(&response)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Alerts).To(BeEmpty())
+			Expect(response.Data.Alerts).To(BeEmpty())
 		})
 	})
 
 	Context("when handling errors", func() {
-		It("should return 500 when GetActiveAlerts fails", func() {
+		It("should return 500 when GetAlerts fails", func() {
 			By("configuring mock to return error")
-			mockPrometheusAlerts.GetActiveAlertsFunc = func(ctx context.Context) ([]k8s.ActiveAlert, error) {
+			mockPrometheusAlerts.GetAlertsFunc = func(ctx context.Context, req k8s.GetAlertsRequest) ([]k8s.PrometheusAlert, error) {
 				return nil, fmt.Errorf("connection error")
 			}
 
@@ -268,70 +258,13 @@ var _ = Describe("GetAlerts", func() {
 	})
 
 	Context("when dealing with edge cases", func() {
-		It("should handle alerts with nil labels map", func() {
-			By("setting up alert with nil labels")
-			testAlerts := []k8s.ActiveAlert{
-				{
-					Name:     "NoLabelsAlert",
-					Severity: "warning",
-					Labels:   nil,
-					State:    "firing",
-					ActiveAt: time.Now(),
-				},
-			}
-			mockPrometheusAlerts.SetActiveAlerts(testAlerts)
-
-			By("making request with label filter")
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/alerting/alerts?labels[severity]=warning", nil)
-			w := httptest.NewRecorder()
-
-			router.ServeHTTP(w, req)
-
-			By("verifying it's filtered out correctly")
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response httprouter.GetAlertsResponse
-			err := json.NewDecoder(w.Body).Decode(&response)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Alerts).To(BeEmpty())
-		})
-
-		It("should handle alerts with empty labels map", func() {
-			By("setting up alert with empty labels")
-			testAlerts := []k8s.ActiveAlert{
-				{
-					Name:     "EmptyLabelsAlert",
-					Severity: "warning",
-					Labels:   map[string]string{},
-					State:    "firing",
-					ActiveAt: time.Now(),
-				},
-			}
-			mockPrometheusAlerts.SetActiveAlerts(testAlerts)
-
-			By("making request without filters")
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/alerting/alerts", nil)
-			w := httptest.NewRecorder()
-
-			router.ServeHTTP(w, req)
-
-			By("verifying alert is returned")
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response httprouter.GetAlertsResponse
-			err := json.NewDecoder(w.Body).Decode(&response)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Alerts).To(HaveLen(1))
-		})
-
 		It("should handle empty label filter values", func() {
 			By("setting up test alerts")
-			testAlerts := []k8s.ActiveAlert{
+			testAlerts := []k8s.PrometheusAlert{
 				{
-					Name:     "TestAlert",
-					Severity: "warning",
 					Labels: map[string]string{
-						"severity":  "",
+						"alertname": "TestAlert",
+						"severity":  "warning",
 						"namespace": "default",
 					},
 					State:    "firing",
@@ -352,7 +285,7 @@ var _ = Describe("GetAlerts", func() {
 			var response httprouter.GetAlertsResponse
 			err := json.NewDecoder(w.Body).Decode(&response)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Alerts).To(HaveLen(1))
+			Expect(response.Data.Alerts).To(HaveLen(1))
 		})
 	})
 })

@@ -80,11 +80,11 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			})
 
 			alertRuleId := "alert2-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "test-namespace",
 					Name:      "multi-rule",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "Alert2" {
@@ -134,11 +134,11 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			})
 
 			alertRuleId := "only-alert-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "test-namespace",
 					Name:      "single-rule",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				return mapper.PrometheusAlertRuleId(alertRuleId)
@@ -199,11 +199,11 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			})
 
 			alertRuleId := "single-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "test-namespace",
 					Name:      "multi-group",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "SingleRuleInGroup" {
@@ -261,11 +261,11 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			})
 
 			targetRuleId := "target-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "test-namespace",
 					Name:      "similar-rules",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				// Only rule1 matches the target ID
@@ -291,8 +291,8 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 		It("should return error when rule not found in mapper", func() {
 			By("configuring mapper to return error")
 			alertRuleId := "nonexistent-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
-				return nil, nil, errors.New("alert rule not found")
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
+				return nil, errors.New("alert rule not found")
 			}
 
 			By("attempting to delete the rule")
@@ -306,11 +306,11 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 		It("should return error when trying to delete from platform-managed PrometheusRule", func() {
 			By("configuring mapper to return platform PrometheusRule")
 			alertRuleId := "platform-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "openshift-monitoring",
 					Name:      "openshift-platform-alerts",
-				}, nil, nil
+				}, nil
 			}
 
 			By("attempting to delete the rule")
@@ -324,11 +324,11 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 		It("should return error when PrometheusRule Get fails", func() {
 			By("configuring Get to return error")
 			alertRuleId := "test-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "test-namespace",
 					Name:      "test-rule",
-				}, nil, nil
+				}, nil
 			}
 
 			mockPR.GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, error) {
@@ -374,11 +374,11 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			})
 
 			alertRuleId := "alert2-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "test-namespace",
 					Name:      "test-rule",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "Alert2" {
@@ -427,11 +427,11 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			})
 
 			alertRuleId := "only-alert-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "test-namespace",
 					Name:      "single-rule",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				return mapper.PrometheusAlertRuleId(alertRuleId)
@@ -495,11 +495,11 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			})
 
 			alertRuleId := "alert2-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "test-namespace",
 					Name:      "multi-group",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "Alert2" {

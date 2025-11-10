@@ -62,8 +62,8 @@ var _ = Describe("CreateUserDefinedAlertRule", func() {
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				return mapper.PrometheusAlertRuleId(ruleId)
 			}
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
-				return nil, nil, errors.New("not found")
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
+				return nil, errors.New("not found")
 			}
 
 			addRuleCalled := false
@@ -104,8 +104,8 @@ var _ = Describe("CreateUserDefinedAlertRule", func() {
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				return mapper.PrometheusAlertRuleId(ruleId)
 			}
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
-				return nil, nil, errors.New("not found")
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
+				return nil, errors.New("not found")
 			}
 
 			var capturedGroupName string
@@ -199,12 +199,12 @@ var _ = Describe("CreateUserDefinedAlertRule", func() {
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				return mapper.PrometheusAlertRuleId(ruleId)
 			}
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				// Return success, indicating the rule already exists
 				return &mapper.PrometheusRuleId{
 					Namespace: "test-namespace",
 					Name:      "test-rule",
-				}, nil, nil
+				}, nil
 			}
 
 			By("attempting to create the duplicate alert rule")
@@ -231,8 +231,8 @@ var _ = Describe("CreateUserDefinedAlertRule", func() {
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				return mapper.PrometheusAlertRuleId(ruleId)
 			}
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
-				return nil, nil, errors.New("not found")
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
+				return nil, errors.New("not found")
 			}
 
 			expectedError := errors.New("failed to add rule to kubernetes")
@@ -266,8 +266,8 @@ var _ = Describe("CreateUserDefinedAlertRule", func() {
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				return mapper.PrometheusAlertRuleId(ruleId)
 			}
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
-				return nil, nil, errors.New("not found")
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
+				return nil, errors.New("not found")
 			}
 
 			addRuleCalled := false

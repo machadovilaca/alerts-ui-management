@@ -77,11 +77,11 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 			})
 
 			alertRuleId := "test-platform-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "openshift-monitoring",
 					Name:      "openshift-platform-alerts",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "PlatformAlert" {
@@ -163,7 +163,7 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 
 			existingARC := &osmv1.AlertRelabelConfig{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "existing-arc",
+					Name:      "openshift-platform-alerts-PlatformAlert-relabel",
 					Namespace: "openshift-monitoring",
 				},
 				Spec: osmv1.AlertRelabelConfigSpec{
@@ -181,18 +181,15 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 				"openshift-monitoring/openshift-platform-alerts": prometheusRule,
 			})
 			mockARC.SetAlertRelabelConfigs(map[string]*osmv1.AlertRelabelConfig{
-				"openshift-monitoring/existing-arc": existingARC,
+				"openshift-monitoring/openshift-platform-alerts-PlatformAlert-relabel": existingARC,
 			})
 
 			alertRuleId := "test-platform-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
-						Namespace: "openshift-monitoring",
-						Name:      "openshift-platform-alerts",
-					}, &mapper.AlertRelabelConfigId{
-						Namespace: "openshift-monitoring",
-						Name:      "existing-arc",
-					}, nil
+					Namespace: "openshift-monitoring",
+					Name:      "openshift-platform-alerts",
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "PlatformAlert" {
@@ -214,7 +211,7 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying existing AlertRelabelConfig was updated")
-			arc, err := mockARC.Get(ctx, "openshift-monitoring", "existing-arc")
+			arc, err := mockARC.Get(ctx, "openshift-monitoring", "openshift-platform-alerts-PlatformAlert-relabel")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(arc.Spec.Configs).To(HaveLen(1))
 			Expect(arc.Spec.Configs[0].Action).To(Equal("Replace"))
@@ -255,11 +252,11 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 			})
 
 			alertRuleId := "test-platform-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "openshift-monitoring",
 					Name:      "openshift-platform-alerts",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "PlatformAlert" {
@@ -302,11 +299,11 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 		It("should return error when trying to update non-platform rule", func() {
 			By("setting up a user-defined rule")
 			alertRuleId := "test-user-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "user-namespace",
 					Name:      "user-rule",
-				}, nil, nil
+				}, nil
 			}
 
 			updatedRule := monitoringv1.Rule{
@@ -352,11 +349,11 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 			})
 
 			alertRuleId := "test-platform-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "openshift-monitoring",
 					Name:      "openshift-platform-alerts",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "PlatformAlert" {
@@ -382,8 +379,8 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 		It("should return error when alert rule not found", func() {
 			By("setting up mapper to return rule ID")
 			alertRuleId := "non-existent-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
-				return nil, nil, errors.New("alert rule not found")
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
+				return nil, errors.New("alert rule not found")
 			}
 
 			updatedRule := monitoringv1.Rule{

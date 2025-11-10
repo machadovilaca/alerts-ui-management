@@ -66,11 +66,11 @@ var _ = Describe("UpdateUserDefinedAlertRule", func() {
 			})
 
 			alertRuleId := "test-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "user-namespace",
 					Name:      "user-rule",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "OldAlert" {
@@ -142,11 +142,11 @@ var _ = Describe("UpdateUserDefinedAlertRule", func() {
 			})
 
 			alertRuleId := "alert2-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "user-namespace",
 					Name:      "multi-rule",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "Alert2" {
@@ -204,11 +204,11 @@ var _ = Describe("UpdateUserDefinedAlertRule", func() {
 			})
 
 			alertRuleId := "non-existent-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "user-namespace",
 					Name:      "user-rule",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				return mapper.PrometheusAlertRuleId("different-id")
@@ -227,11 +227,11 @@ var _ = Describe("UpdateUserDefinedAlertRule", func() {
 
 		It("should return error when trying to update a platform-managed alert rule", func() {
 			alertRuleId := "platform-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "openshift-monitoring",
 					Name:      "openshift-platform-rules",
-				}, nil, nil
+				}, nil
 			}
 
 			updatedRule := monitoringv1.Rule{

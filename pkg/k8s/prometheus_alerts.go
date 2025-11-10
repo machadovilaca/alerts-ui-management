@@ -15,13 +15,13 @@ import (
 )
 
 const (
-	alertmanagerRouteNamespace = "openshift-monitoring"
-	alertmanagerRouteName      = "alertmanager-main"
-	alertmanagerAPIPath        = "/v2/alerts"
+	prometheusRouteNamespace = "openshift-monitoring"
+	prometheusRouteName      = "prometheus-k8s"
+	prometheusAPIPath        = "/v1/alerts"
 )
 
 var (
-	alertmanagerRoutePath = fmt.Sprintf("/apis/route.openshift.io/v1/namespaces/%s/routes/%s", alertmanagerRouteNamespace, alertmanagerRouteName)
+	prometheusRoutePath = fmt.Sprintf("/apis/route.openshift.io/v1/namespaces/%s/routes/%s", prometheusRouteNamespace, prometheusRouteName)
 )
 
 type prometheusAlerts struct {
@@ -29,28 +29,28 @@ type prometheusAlerts struct {
 	config    *rest.Config
 }
 
-type ActiveAlert struct {
-	Name        string            `json:"name"`
-	Severity    string            `json:"severity"`
+// GetAlertsRequest holds parameters for filtering alerts
+type GetAlertsRequest struct {
+	// Labels filters alerts by labels
+	Labels map[string]string
+	// State filters alerts by state: "firing", "pending", or "" for all states
+	State string
+}
+
+type PrometheusAlert struct {
 	Labels      map[string]string `json:"labels"`
 	Annotations map[string]string `json:"annotations"`
 	State       string            `json:"state"`
 	ActiveAt    time.Time         `json:"activeAt"`
+	Value       string            `json:"value"`
 }
 
-type alertmanagerAlert struct {
-	Labels      map[string]string `json:"labels"`
-	Annotations map[string]string `json:"annotations"`
-	StartsAt    time.Time         `json:"startsAt"`
-	EndsAt      time.Time         `json:"endsAt"`
-	Status      struct {
-		State       string   `json:"state"`
-		SilencedBy  []string `json:"silencedBy"`
-		InhibitedBy []string `json:"inhibitedBy"`
-	} `json:"status"`
+type prometheusAlertsResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		Alerts []PrometheusAlert `json:"alerts"`
+	} `json:"data"`
 }
-
-type alertmanagerAlertsResponse []alertmanagerAlert
 
 func newPrometheusAlerts(clientset *kubernetes.Clientset, config *rest.Config) PrometheusAlertsInterface {
 	return &prometheusAlerts{
@@ -59,30 +59,34 @@ func newPrometheusAlerts(clientset *kubernetes.Clientset, config *rest.Config) P
 	}
 }
 
-func (pa prometheusAlerts) GetActiveAlerts(ctx context.Context) ([]ActiveAlert, error) {
+func (pa prometheusAlerts) GetAlerts(ctx context.Context, req GetAlertsRequest) ([]PrometheusAlert, error) {
 	raw, err := pa.getAlertsViaProxy(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var alertsResp alertmanagerAlertsResponse
+	var alertsResp prometheusAlertsResponse
 	if err := json.Unmarshal(raw, &alertsResp); err != nil {
-		return nil, fmt.Errorf("decode alertmanager response: %w", err)
+		return nil, fmt.Errorf("decode prometheus response: %w", err)
 	}
 
-	out := make([]ActiveAlert, 0, len(alertsResp))
-	for _, a := range alertsResp {
-		// Alertmanager v2 API uses "active" or "suppressed" state
-		if a.Status.State == "active" {
-			out = append(out, ActiveAlert{
-				Name:        a.Labels["alertname"],
-				Severity:    a.Labels["severity"],
-				Labels:      a.Labels,
-				Annotations: a.Annotations,
-				State:       "firing", // Map "active" to "firing" for consistency
-				ActiveAt:    a.StartsAt,
-			})
+	if alertsResp.Status != "success" {
+		return nil, fmt.Errorf("prometheus API returned non-success status: %s", alertsResp.Status)
+	}
+
+	out := make([]PrometheusAlert, 0, len(alertsResp.Data.Alerts))
+	for _, a := range alertsResp.Data.Alerts {
+		// Filter alerts based on state if provided
+		if req.State != "" && a.State != req.State {
+			continue
 		}
+
+		// Filter alerts based on labels if provided
+		if !labelsMatch(&req, &a) {
+			continue
+		}
+
+		out = append(out, a)
 	}
 	return out, nil
 }
@@ -90,11 +94,11 @@ func (pa prometheusAlerts) GetActiveAlerts(ctx context.Context) ([]ActiveAlert, 
 func (pa prometheusAlerts) getAlertsViaProxy(ctx context.Context) ([]byte, error) {
 	route, err := pa.clientset.CoreV1().RESTClient().
 		Get().
-		AbsPath(alertmanagerRoutePath).
+		AbsPath(prometheusRoutePath).
 		DoRaw(ctx)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to get alertmanager route: %w", err)
+		return nil, fmt.Errorf("failed to get prometheus route: %w", err)
 	}
 
 	var routeObj struct {
@@ -107,7 +111,7 @@ func (pa prometheusAlerts) getAlertsViaProxy(ctx context.Context) ([]byte, error
 		return nil, fmt.Errorf("failed to parse route: %w", err)
 	}
 
-	url := fmt.Sprintf("https://%s%s%s", routeObj.Spec.Host, routeObj.Spec.Path, alertmanagerAPIPath)
+	url := fmt.Sprintf("https://%s%s%s", routeObj.Spec.Host, routeObj.Spec.Path, prometheusAPIPath)
 
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -144,4 +148,14 @@ func (pa prometheusAlerts) getAlertsViaProxy(ctx context.Context) ([]byte, error
 	}
 
 	return io.ReadAll(resp.Body)
+}
+
+func labelsMatch(req *GetAlertsRequest, alert *PrometheusAlert) bool {
+	for key, value := range req.Labels {
+		if alertValue, exists := alert.Labels[key]; !exists || alertValue != value {
+			return false
+		}
+	}
+
+	return true
 }

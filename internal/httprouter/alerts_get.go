@@ -11,10 +11,16 @@ import (
 
 type GetAlertsQueryParams struct {
 	Labels map[string]string `form:"labels"`
+	State  string            `form:"state"`
 }
 
 type GetAlertsResponse struct {
-	Alerts []k8s.ActiveAlert `json:"alerts"`
+	Data   GetAlertsResponseData `json:"data"`
+	Status string                `json:"status"`
+}
+
+type GetAlertsResponseData struct {
+	Alerts []k8s.PrometheusAlert `json:"alerts"`
 }
 
 func (hr *httpRouter) GetAlerts(w http.ResponseWriter, req *http.Request) {
@@ -25,37 +31,21 @@ func (hr *httpRouter) GetAlerts(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	alerts, err := hr.k8sClient.PrometheusAlerts().GetActiveAlerts(req.Context())
+	alerts, err := hr.managementClient.GetAlerts(req.Context(), k8s.GetAlertsRequest{
+		Labels: params.Labels,
+		State:  params.State,
+	})
 	if err != nil {
 		errorResponse(w, http.StatusInternalServerError, "Failed to get alerts: "+err.Error())
 		return
 	}
 
-	// Filter alerts based on labels if provided
-	if len(params.Labels) > 0 {
-		filteredAlerts := make([]k8s.ActiveAlert, 0)
-
-		for _, alert := range alerts {
-			if labelsMatch(&params, &alert) {
-				filteredAlerts = append(filteredAlerts, alert)
-			}
-		}
-
-		alerts = filteredAlerts
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(GetAlertsResponse{Alerts: alerts})
-}
-
-// labelsMatch checks if all labels in the request match the labels of the alert
-func labelsMatch(req *GetAlertsQueryParams, alert *k8s.ActiveAlert) bool {
-	for key, value := range req.Labels {
-		if alertValue, exists := alert.Labels[key]; !exists || alertValue != value {
-			return false
-		}
-	}
-
-	return true
+	_ = json.NewEncoder(w).Encode(GetAlertsResponse{
+		Data: GetAlertsResponseData{
+			Alerts: alerts,
+		},
+		Status: "success",
+	})
 }

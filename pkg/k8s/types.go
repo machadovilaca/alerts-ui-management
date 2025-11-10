@@ -38,8 +38,8 @@ type Client interface {
 
 // PrometheusAlertsInterface defines operations for managing PrometheusAlerts
 type PrometheusAlertsInterface interface {
-	// GetActiveAlerts retrieves active Prometheus alerts
-	GetActiveAlerts(ctx context.Context) ([]ActiveAlert, error)
+	// GetAlerts retrieves Prometheus alerts with optional state filtering
+	GetAlerts(ctx context.Context, req GetAlertsRequest) ([]PrometheusAlert, error)
 }
 
 // PrometheusRuleInterface defines operations for managing PrometheusRules

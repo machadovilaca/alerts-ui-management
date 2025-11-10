@@ -71,26 +71,36 @@ func (m *MockClient) AlertRelabelConfigInformer() k8s.AlertRelabelConfigInformer
 
 // MockPrometheusAlertsInterface is a mock implementation of k8s.PrometheusAlertsInterface
 type MockPrometheusAlertsInterface struct {
-	GetActiveAlertsFunc func(ctx context.Context) ([]k8s.ActiveAlert, error)
+	GetAlertsFunc func(ctx context.Context, req k8s.GetAlertsRequest) ([]k8s.PrometheusAlert, error)
 
 	// Storage for test data
-	ActiveAlerts []k8s.ActiveAlert
+	ActiveAlerts []k8s.PrometheusAlert
 }
 
-func (m *MockPrometheusAlertsInterface) SetActiveAlerts(alerts []k8s.ActiveAlert) {
+func (m *MockPrometheusAlertsInterface) SetActiveAlerts(alerts []k8s.PrometheusAlert) {
 	m.ActiveAlerts = alerts
 }
 
-// GetActiveAlerts mocks the GetActiveAlerts method
-func (m *MockPrometheusAlertsInterface) GetActiveAlerts(ctx context.Context) ([]k8s.ActiveAlert, error) {
-	if m.GetActiveAlertsFunc != nil {
-		return m.GetActiveAlertsFunc(ctx)
+// GetAlerts mocks the GetAlerts method
+func (m *MockPrometheusAlertsInterface) GetAlerts(ctx context.Context, req k8s.GetAlertsRequest) ([]k8s.PrometheusAlert, error) {
+	if m.GetAlertsFunc != nil {
+		return m.GetAlertsFunc(ctx, req)
 	}
 
 	if m.ActiveAlerts != nil {
+		// Apply state filtering if specified
+		if req.State != "" {
+			filtered := make([]k8s.PrometheusAlert, 0)
+			for _, alert := range m.ActiveAlerts {
+				if alert.State == req.State {
+					filtered = append(filtered, alert)
+				}
+			}
+			return filtered, nil
+		}
 		return m.ActiveAlerts, nil
 	}
-	return []k8s.ActiveAlert{}, nil
+	return []k8s.PrometheusAlert{}, nil
 }
 
 // MockPrometheusRuleInterface is a mock implementation of k8s.PrometheusRuleInterface
