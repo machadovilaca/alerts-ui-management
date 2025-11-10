@@ -11,8 +11,8 @@ goimport:
 	goimports -w -local="github.com/machadovilaca/alerts-ui-management" .
 
 lint:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	golangci-lint run
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.6.1
+	golangci-lint run ./...
 
 test:
 	go test -v ./...
