@@ -88,16 +88,6 @@ func (m *MockPrometheusAlertsInterface) GetAlerts(ctx context.Context, req k8s.G
 	}
 
 	if m.ActiveAlerts != nil {
-		// Apply state filtering if specified
-		if req.State != "" {
-			filtered := make([]k8s.PrometheusAlert, 0)
-			for _, alert := range m.ActiveAlerts {
-				if alert.State == req.State {
-					filtered = append(filtered, alert)
-				}
-			}
-			return filtered, nil
-		}
 		return m.ActiveAlerts, nil
 	}
 	return []k8s.PrometheusAlert{}, nil

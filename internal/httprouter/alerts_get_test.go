@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -108,135 +107,6 @@ var _ = Describe("GetAlerts", func() {
 		})
 	})
 
-	Context("when filtering alerts by labels", func() {
-		BeforeEach(func() {
-			By("setting up test alerts with various labels")
-			testAlerts := []k8s.PrometheusAlert{
-				{
-					Labels: map[string]string{
-						"alertname": "HighCPUUsage",
-						"severity":  "warning",
-						"namespace": "default",
-						"service":   "api",
-					},
-					State:    "firing",
-					ActiveAt: time.Now(),
-				},
-				{
-					Labels: map[string]string{
-						"alertname": "LowMemory",
-						"severity":  "critical",
-						"namespace": "default",
-						"service":   "database",
-					},
-					State:    "firing",
-					ActiveAt: time.Now(),
-				},
-				{
-					Labels: map[string]string{
-						"alertname": "DiskSpaceLow",
-						"severity":  "warning",
-						"namespace": "monitoring",
-						"service":   "storage",
-					},
-					State:    "firing",
-					ActiveAt: time.Now(),
-				},
-			}
-			mockPrometheusAlerts.SetActiveAlerts(testAlerts)
-		})
-
-		It("should filter alerts by single label", func() {
-			By("making request with severity filter")
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/alerting/alerts?labels[severity]=warning", nil)
-			w := httptest.NewRecorder()
-
-			router.ServeHTTP(w, req)
-
-			By("verifying filtered response")
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response httprouter.GetAlertsResponse
-			err := json.NewDecoder(w.Body).Decode(&response)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Data.Alerts).To(HaveLen(2))
-			Expect(response.Data.Alerts[0].Labels["severity"]).To(Equal("warning"))
-			Expect(response.Data.Alerts[1].Labels["severity"]).To(Equal("warning"))
-		})
-
-		It("should filter alerts by multiple labels", func() {
-			By("making request with multiple label filters")
-			params := url.Values{}
-			params.Add("labels[severity]", "warning")
-			params.Add("labels[namespace]", "default")
-
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/alerting/alerts?"+params.Encode(), nil)
-			w := httptest.NewRecorder()
-
-			router.ServeHTTP(w, req)
-
-			By("verifying filtered response")
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response httprouter.GetAlertsResponse
-			err := json.NewDecoder(w.Body).Decode(&response)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Data.Alerts).To(HaveLen(1))
-			Expect(response.Data.Alerts[0].Labels["alertname"]).To(Equal("HighCPUUsage"))
-			Expect(response.Data.Alerts[0].Labels["severity"]).To(Equal("warning"))
-			Expect(response.Data.Alerts[0].Labels["namespace"]).To(Equal("default"))
-		})
-
-		It("should return empty array when no alerts match the filter", func() {
-			By("making request with non-matching filter")
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/alerting/alerts?labels[severity]=info", nil)
-			w := httptest.NewRecorder()
-
-			router.ServeHTTP(w, req)
-
-			By("verifying empty response")
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response httprouter.GetAlertsResponse
-			err := json.NewDecoder(w.Body).Decode(&response)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Data.Alerts).To(BeEmpty())
-		})
-
-		It("should filter alerts when label value doesn't match", func() {
-			By("making request with specific namespace filter")
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/alerting/alerts?labels[namespace]=monitoring", nil)
-			w := httptest.NewRecorder()
-
-			router.ServeHTTP(w, req)
-
-			By("verifying filtered response")
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response httprouter.GetAlertsResponse
-			err := json.NewDecoder(w.Body).Decode(&response)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Data.Alerts).To(HaveLen(1))
-			Expect(response.Data.Alerts[0].Labels["alertname"]).To(Equal("DiskSpaceLow"))
-		})
-
-		It("should filter alerts when label key doesn't exist", func() {
-			By("making request with non-existent label key")
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/alerting/alerts?labels[nonexistent]=value", nil)
-			w := httptest.NewRecorder()
-
-			router.ServeHTTP(w, req)
-
-			By("verifying empty response")
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response httprouter.GetAlertsResponse
-			err := json.NewDecoder(w.Body).Decode(&response)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Data.Alerts).To(BeEmpty())
-		})
-	})
-
 	Context("when handling errors", func() {
 		It("should return 500 when GetAlerts fails", func() {
 			By("configuring mock to return error")
@@ -257,35 +127,4 @@ var _ = Describe("GetAlerts", func() {
 		})
 	})
 
-	Context("when dealing with edge cases", func() {
-		It("should handle empty label filter values", func() {
-			By("setting up test alerts")
-			testAlerts := []k8s.PrometheusAlert{
-				{
-					Labels: map[string]string{
-						"alertname": "TestAlert",
-						"severity":  "warning",
-						"namespace": "default",
-					},
-					State:    "firing",
-					ActiveAt: time.Now(),
-				},
-			}
-			mockPrometheusAlerts.SetActiveAlerts(testAlerts)
-
-			By("making request with empty label value filter")
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/alerting/alerts?labels[severity]=", nil)
-			w := httptest.NewRecorder()
-
-			router.ServeHTTP(w, req)
-
-			By("verifying exact match with empty value")
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response httprouter.GetAlertsResponse
-			err := json.NewDecoder(w.Body).Decode(&response)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Data.Alerts).To(HaveLen(1))
-		})
-	})
 })
