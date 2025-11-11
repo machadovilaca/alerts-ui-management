@@ -14,14 +14,14 @@ var _ mapper.Client = &MockMapperClient{}
 // MockMapperClient is a simple mock for the mapper.Client interface
 type MockMapperClient struct {
 	GetAlertingRuleIdFunc         func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId
-	FindAlertRuleByIdFunc         func(alertRuleId mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error)
+	FindAlertRuleByIdFunc         func(alertRuleId mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error)
 	WatchPrometheusRulesFunc      func(ctx context.Context)
 	AddPrometheusRuleFunc         func(pr *monitoringv1.PrometheusRule)
 	DeletePrometheusRuleFunc      func(pr *monitoringv1.PrometheusRule)
 	WatchAlertRelabelConfigsFunc  func(ctx context.Context)
 	AddAlertRelabelConfigFunc     func(arc *osmv1.AlertRelabelConfig)
 	DeleteAlertRelabelConfigFunc  func(arc *osmv1.AlertRelabelConfig)
-	GetAlertRelabelConfigSpecFunc func(arcId mapper.AlertRelabelConfigId) []mapper.AlertRelabelConfigSpec
+	GetAlertRelabelConfigSpecFunc func(alertRule *monitoringv1.Rule) []osmv1.RelabelConfig
 }
 
 func (m *MockMapperClient) GetAlertingRuleId(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
@@ -31,11 +31,11 @@ func (m *MockMapperClient) GetAlertingRuleId(alertRule *monitoringv1.Rule) mappe
 	return mapper.PrometheusAlertRuleId("mock-id")
 }
 
-func (m *MockMapperClient) FindAlertRuleById(alertRuleId mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+func (m *MockMapperClient) FindAlertRuleById(alertRuleId mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 	if m.FindAlertRuleByIdFunc != nil {
 		return m.FindAlertRuleByIdFunc(alertRuleId)
 	}
-	return nil, nil, nil
+	return nil, nil
 }
 
 func (m *MockMapperClient) WatchPrometheusRules(ctx context.Context) {
@@ -74,9 +74,9 @@ func (m *MockMapperClient) DeleteAlertRelabelConfig(arc *osmv1.AlertRelabelConfi
 	}
 }
 
-func (m *MockMapperClient) GetAlertRelabelConfigSpec(arcId mapper.AlertRelabelConfigId) []mapper.AlertRelabelConfigSpec {
+func (m *MockMapperClient) GetAlertRelabelConfigSpec(alertRule *monitoringv1.Rule) []osmv1.RelabelConfig {
 	if m.GetAlertRelabelConfigSpecFunc != nil {
-		return m.GetAlertRelabelConfigSpecFunc(arcId)
+		return m.GetAlertRelabelConfigSpecFunc(alertRule)
 	}
 	return nil
 }

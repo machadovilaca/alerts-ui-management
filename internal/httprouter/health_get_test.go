@@ -16,7 +16,7 @@ var _ = Describe("GetHealth", func() {
 
 	BeforeEach(func() {
 		By("setting up the HTTP router")
-		router = httprouter.New(nil, nil)
+		router = httprouter.New(nil)
 	})
 
 	Context("when calling the health endpoint", func() {

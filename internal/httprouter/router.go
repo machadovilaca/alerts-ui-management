@@ -5,18 +5,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
 	"github.com/machadovilaca/alerts-ui-management/pkg/management"
 )
 
 type httpRouter struct {
-	k8sClient        k8s.Client
 	managementClient management.Client
 }
 
-func New(k8sClient k8s.Client, managementClient management.Client) *chi.Mux {
+func New(managementClient management.Client) *chi.Mux {
 	httpRouter := &httpRouter{
-		k8sClient:        k8sClient,
 		managementClient: managementClient,
 	}
 

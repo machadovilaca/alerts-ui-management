@@ -4,6 +4,8 @@ import (
 	"context"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+
+	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
 )
 
 // Client is the interface for managing alert rules
@@ -26,6 +28,9 @@ type Client interface {
 	// UpdatePlatformAlertRule updates an existing platform alert rule by its ID
 	// Platform alert rules can only have the labels updated through AlertRelabelConfigs
 	UpdatePlatformAlertRule(ctx context.Context, alertRuleId string, alertRule monitoringv1.Rule) error
+
+	// GetAlerts retrieves Prometheus alerts
+	GetAlerts(ctx context.Context, req k8s.GetAlertsRequest) ([]k8s.PrometheusAlert, error)
 }
 
 // PrometheusRuleOptions specifies options for selecting PrometheusRule resources and groups

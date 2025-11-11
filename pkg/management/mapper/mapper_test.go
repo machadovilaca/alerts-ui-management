@@ -136,7 +136,7 @@ var _ = Describe("Mapper", func() {
 				Expect(ruleId).NotTo(BeEmpty())
 
 				By("testing FindAlertRuleById")
-				foundPrometheusRuleId, foundAlertRelabelConfigId, err := mapperClient.FindAlertRuleById(ruleId)
+				foundPrometheusRuleId, err := mapperClient.FindAlertRuleById(ruleId)
 
 				By("verifying results")
 				Expect(err).NotTo(HaveOccurred())
@@ -145,7 +145,6 @@ var _ = Describe("Mapper", func() {
 					Name:      "test-rule",
 				})
 				Expect(*foundPrometheusRuleId).To(Equal(expectedPrometheusRuleId))
-				Expect(foundAlertRelabelConfigId).To(BeNil())
 			})
 
 			It("should return the correct PrometheusRuleId when alert rule is one of multiple in the same PrometheusRule", func() {
@@ -178,15 +177,13 @@ var _ = Describe("Mapper", func() {
 					Name:      "multi-rule",
 				})
 
-				foundPrometheusRuleId1, foundAlertRelabelConfigId1, err1 := mapperClient.FindAlertRuleById(ruleId1)
+				foundPrometheusRuleId1, err1 := mapperClient.FindAlertRuleById(ruleId1)
 				Expect(err1).NotTo(HaveOccurred())
 				Expect(*foundPrometheusRuleId1).To(Equal(expectedPrometheusRuleId))
-				Expect(foundAlertRelabelConfigId1).To(BeNil())
 
-				foundPrometheusRuleId2, foundAlertRelabelConfigId2, err2 := mapperClient.FindAlertRuleById(ruleId2)
+				foundPrometheusRuleId2, err2 := mapperClient.FindAlertRuleById(ruleId2)
 				Expect(err2).NotTo(HaveOccurred())
 				Expect(*foundPrometheusRuleId2).To(Equal(expectedPrometheusRuleId))
-				Expect(foundAlertRelabelConfigId2).To(BeNil())
 			})
 		})
 
@@ -196,7 +193,7 @@ var _ = Describe("Mapper", func() {
 				nonExistentRuleId := mapper.PrometheusAlertRuleId("non-existent-rule-id")
 
 				By("testing the method")
-				_, _, err := mapperClient.FindAlertRuleById(nonExistentRuleId)
+				_, err := mapperClient.FindAlertRuleById(nonExistentRuleId)
 
 				By("verifying results")
 				Expect(err).To(HaveOccurred())
@@ -216,7 +213,7 @@ var _ = Describe("Mapper", func() {
 				nonExistentRuleId := mapper.PrometheusAlertRuleId("definitely-non-existent-rule-id")
 
 				By("testing the method")
-				_, _, err := mapperClient.FindAlertRuleById(nonExistentRuleId)
+				_, err := mapperClient.FindAlertRuleById(nonExistentRuleId)
 
 				By("verifying results")
 				Expect(err).To(HaveOccurred())
@@ -245,13 +242,13 @@ var _ = Describe("Mapper", func() {
 
 				By("verifying the rules can be found")
 				ruleId1 := mapperClient.GetAlertingRuleId(&alertRule1)
-				foundPr1, _, err1 := mapperClient.FindAlertRuleById(ruleId1)
+				foundPr1, err1 := mapperClient.FindAlertRuleById(ruleId1)
 				Expect(err1).ToNot(HaveOccurred())
 				Expect(foundPr1.Namespace).To(Equal("test-namespace"))
 				Expect(foundPr1.Name).To(Equal("test-rule"))
 
 				ruleId2 := mapperClient.GetAlertingRuleId(&alertRule2)
-				foundPr2, _, err2 := mapperClient.FindAlertRuleById(ruleId2)
+				foundPr2, err2 := mapperClient.FindAlertRuleById(ruleId2)
 				Expect(err2).ToNot(HaveOccurred())
 				Expect(foundPr2.Namespace).To(Equal("test-namespace"))
 				Expect(foundPr2.Name).To(Equal("test-rule"))
@@ -276,12 +273,12 @@ var _ = Describe("Mapper", func() {
 
 				By("verifying old rule is no longer found")
 				ruleId1 := mapperClient.GetAlertingRuleId(&alertRule1)
-				_, _, err1 := mapperClient.FindAlertRuleById(ruleId1)
+				_, err1 := mapperClient.FindAlertRuleById(ruleId1)
 				Expect(err1).To(HaveOccurred())
 
 				By("verifying new rule is found")
 				ruleId2 := mapperClient.GetAlertingRuleId(&alertRule2)
-				foundPr, _, err2 := mapperClient.FindAlertRuleById(ruleId2)
+				foundPr, err2 := mapperClient.FindAlertRuleById(ruleId2)
 				Expect(err2).ToNot(HaveOccurred())
 				Expect(foundPr.Namespace).To(Equal("test-namespace"))
 			})
@@ -300,7 +297,7 @@ var _ = Describe("Mapper", func() {
 
 				By("verifying the recording rule is not found")
 				ruleId := mapperClient.GetAlertingRuleId(&recordingRule)
-				_, _, err := mapperClient.FindAlertRuleById(ruleId)
+				_, err := mapperClient.FindAlertRuleById(ruleId)
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -319,14 +316,14 @@ var _ = Describe("Mapper", func() {
 
 				By("verifying the rule exists")
 				ruleId := mapperClient.GetAlertingRuleId(&alertRule)
-				_, _, err := mapperClient.FindAlertRuleById(ruleId)
+				_, err := mapperClient.FindAlertRuleById(ruleId)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("deleting the PrometheusRule")
 				mapperClient.DeletePrometheusRule(pr)
 
 				By("verifying the rule is no longer found")
-				_, _, err = mapperClient.FindAlertRuleById(ruleId)
+				_, err = mapperClient.FindAlertRuleById(ruleId)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("not found"))
 			})
@@ -354,7 +351,7 @@ var _ = Describe("Mapper", func() {
 				mapperClient.AddPrometheusRule(pr2)
 
 				ruleId := mapperClient.GetAlertingRuleId(&alertRule2)
-				foundPr, _, err := mapperClient.FindAlertRuleById(ruleId)
+				foundPr, err := mapperClient.FindAlertRuleById(ruleId)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(foundPr.Name).To(Equal("another-rule"))
 			})
@@ -388,11 +385,16 @@ var _ = Describe("Mapper", func() {
 				mapperClient.AddAlertRelabelConfig(arc)
 
 				By("verifying it can be retrieved")
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "test-arc"})
-				specs := mapperClient.GetAlertRelabelConfigSpec(arcId)
-				Expect(specs).To(HaveLen(1))
-				Expect(specs[0].Labels["alertname"]).To(Equal("TestAlert"))
-				Expect(specs[0].Labels["severity"]).To(Equal("critical"))
+				alertRule := &monitoringv1.Rule{
+					Alert: "TestAlert",
+					Labels: map[string]string{
+						"severity": "critical",
+					},
+				}
+				configs := mapperClient.GetAlertRelabelConfigSpec(alertRule)
+				Expect(configs).To(HaveLen(1))
+				Expect(configs[0].SourceLabels).To(ContainElement(osmv1.LabelName("alertname")))
+				Expect(configs[0].Regex).To(Equal("TestAlert;critical"))
 			})
 
 			It("should ignore configs without alertname in SourceLabels", func() {
@@ -419,9 +421,15 @@ var _ = Describe("Mapper", func() {
 				By("adding the AlertRelabelConfig")
 				mapperClient.AddAlertRelabelConfig(arc)
 
-				By("verifying it returns empty")
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "test-arc"})
-				specs := mapperClient.GetAlertRelabelConfigSpec(arcId)
+				By("verifying it returns empty for an alert")
+				alertRule := &monitoringv1.Rule{
+					Alert: "TestAlert",
+					Labels: map[string]string{
+						"severity":  "critical",
+						"namespace": "default",
+					},
+				}
+				specs := mapperClient.GetAlertRelabelConfigSpec(alertRule)
 				Expect(specs).To(BeEmpty())
 			})
 
@@ -469,10 +477,12 @@ var _ = Describe("Mapper", func() {
 				mapperClient.AddAlertRelabelConfig(arc2)
 
 				By("verifying the updated config is retrieved")
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "test-arc"})
-				specs := mapperClient.GetAlertRelabelConfigSpec(arcId)
-				Expect(specs).To(HaveLen(1))
-				Expect(specs[0].Labels["alertname"]).To(Equal("Alert2"))
+				alertRule := &monitoringv1.Rule{
+					Alert: "Alert2",
+				}
+				configs := mapperClient.GetAlertRelabelConfigSpec(alertRule)
+				Expect(configs).To(HaveLen(1))
+				Expect(configs[0].Regex).To(Equal("Alert2"))
 			})
 
 			It("should handle multiple relabel configs in single AlertRelabelConfig", func() {
@@ -507,10 +517,21 @@ var _ = Describe("Mapper", func() {
 				By("adding the AlertRelabelConfig")
 				mapperClient.AddAlertRelabelConfig(arc)
 
-				By("verifying both configs are retrieved")
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "test-arc"})
-				specs := mapperClient.GetAlertRelabelConfigSpec(arcId)
-				Expect(specs).To(HaveLen(2))
+				By("verifying Alert1 gets its matching config")
+				alertRule1 := &monitoringv1.Rule{
+					Alert: "Alert1",
+				}
+				specs1 := mapperClient.GetAlertRelabelConfigSpec(alertRule1)
+				Expect(specs1).To(HaveLen(1))
+				Expect(specs1[0].TargetLabel).To(Equal("severity"))
+
+				By("verifying Alert2 gets its matching config")
+				alertRule2 := &monitoringv1.Rule{
+					Alert: "Alert2",
+				}
+				specs2 := mapperClient.GetAlertRelabelConfigSpec(alertRule2)
+				Expect(specs2).To(HaveLen(1))
+				Expect(specs2[0].TargetLabel).To(Equal("priority"))
 			})
 
 			It("should handle configs with empty regex", func() {
@@ -538,8 +559,10 @@ var _ = Describe("Mapper", func() {
 				mapperClient.AddAlertRelabelConfig(arc)
 
 				By("verifying it's ignored (empty regex)")
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "test-arc"})
-				specs := mapperClient.GetAlertRelabelConfigSpec(arcId)
+				alertRule := &monitoringv1.Rule{
+					Alert: "TestAlert",
+				}
+				specs := mapperClient.GetAlertRelabelConfigSpec(alertRule)
 				Expect(specs).To(BeEmpty())
 			})
 
@@ -568,8 +591,13 @@ var _ = Describe("Mapper", func() {
 				mapperClient.AddAlertRelabelConfig(arc)
 
 				By("verifying it's ignored (mismatch)")
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "test-arc"})
-				specs := mapperClient.GetAlertRelabelConfigSpec(arcId)
+				alertRule := &monitoringv1.Rule{
+					Alert: "OnlyOneValue",
+					Labels: map[string]string{
+						"severity": "critical",
+					},
+				}
+				specs := mapperClient.GetAlertRelabelConfigSpec(alertRule)
 				Expect(specs).To(BeEmpty())
 			})
 		})
@@ -600,16 +628,18 @@ var _ = Describe("Mapper", func() {
 				mapperClient.AddAlertRelabelConfig(arc)
 
 				By("verifying it exists")
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "test-arc"})
-				specs := mapperClient.GetAlertRelabelConfigSpec(arcId)
+				alertRule := &monitoringv1.Rule{
+					Alert: "TestAlert",
+				}
+				specs := mapperClient.GetAlertRelabelConfigSpec(alertRule)
 				Expect(specs).To(HaveLen(1))
 
 				By("deleting the AlertRelabelConfig")
 				mapperClient.DeleteAlertRelabelConfig(arc)
 
 				By("verifying it's no longer found")
-				specs = mapperClient.GetAlertRelabelConfigSpec(arcId)
-				Expect(specs).To(BeNil())
+				specs = mapperClient.GetAlertRelabelConfigSpec(alertRule)
+				Expect(specs).To(BeEmpty())
 			})
 
 			It("should handle deleting non-existent AlertRelabelConfig gracefully", func() {
@@ -651,10 +681,12 @@ var _ = Describe("Mapper", func() {
 				}
 				mapperClient.AddAlertRelabelConfig(arc2)
 
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "another-arc"})
-				specs := mapperClient.GetAlertRelabelConfigSpec(arcId)
-				Expect(specs).To(HaveLen(1))
-				Expect(specs[0].Labels["alertname"]).To(Equal("TestAlert"))
+				alertRule := &monitoringv1.Rule{
+					Alert: "TestAlert",
+				}
+				configs := mapperClient.GetAlertRelabelConfigSpec(alertRule)
+				Expect(configs).To(HaveLen(1))
+				Expect(configs[0].Regex).To(Equal("TestAlert"))
 			})
 		})
 	})
@@ -683,25 +715,35 @@ var _ = Describe("Mapper", func() {
 				}
 				mapperClient.AddAlertRelabelConfig(arc)
 
-				By("retrieving the specs")
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "test-arc"})
-				specs := mapperClient.GetAlertRelabelConfigSpec(arcId)
+				By("retrieving the configs")
+				alertRule := &monitoringv1.Rule{
+					Alert: "TestAlert",
+					Labels: map[string]string{
+						"severity": "critical",
+					},
+				}
+				configs := mapperClient.GetAlertRelabelConfigSpec(alertRule)
 
-				By("verifying the specs")
-				Expect(specs).To(HaveLen(1))
-				Expect(specs[0].Config.TargetLabel).To(Equal("priority"))
-				Expect(specs[0].Config.Replacement).To(Equal("high"))
-				Expect(specs[0].Labels).To(HaveKeyWithValue("alertname", "TestAlert"))
-				Expect(specs[0].Labels).To(HaveKeyWithValue("severity", "critical"))
+				By("verifying the configs")
+				Expect(configs).To(HaveLen(1))
+				Expect(configs[0].TargetLabel).To(Equal("priority"))
+				Expect(configs[0].Replacement).To(Equal("high"))
+				Expect(configs[0].SourceLabels).To(ContainElements(osmv1.LabelName("alertname"), osmv1.LabelName("severity")))
+				Expect(configs[0].Regex).To(Equal("TestAlert;critical"))
 			})
 
-			It("should return nil for non-existent AlertRelabelConfig", func() {
-				By("trying to get specs for non-existent AlertRelabelConfig")
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "non-existent"})
-				specs := mapperClient.GetAlertRelabelConfigSpec(arcId)
+			It("should return empty for alert that doesn't match any config", func() {
+				By("trying to get specs for an alert that doesn't match")
+				alertRule := &monitoringv1.Rule{
+					Alert: "NonMatchingAlert",
+					Labels: map[string]string{
+						"severity": "info",
+					},
+				}
+				specs := mapperClient.GetAlertRelabelConfigSpec(alertRule)
 
-				By("verifying nil is returned")
-				Expect(specs).To(BeNil())
+				By("verifying empty is returned")
+				Expect(specs).To(BeEmpty())
 			})
 
 			It("should return copies of specs (not original pointers)", func() {
@@ -726,36 +768,41 @@ var _ = Describe("Mapper", func() {
 				}
 				mapperClient.AddAlertRelabelConfig(arc)
 
-				By("retrieving specs twice")
-				arcId := mapper.AlertRelabelConfigId(types.NamespacedName{Namespace: "test-namespace", Name: "test-arc"})
-				specs1 := mapperClient.GetAlertRelabelConfigSpec(arcId)
-				specs2 := mapperClient.GetAlertRelabelConfigSpec(arcId)
+				By("retrieving configs twice")
+				alertRule := &monitoringv1.Rule{
+					Alert: "TestAlert",
+				}
+				configs1 := mapperClient.GetAlertRelabelConfigSpec(alertRule)
+				configs2 := mapperClient.GetAlertRelabelConfigSpec(alertRule)
 
-				By("verifying they are not the same instance")
-				Expect(specs1).To(HaveLen(1))
-				Expect(specs2).To(HaveLen(1))
+				By("verifying they are independent copies")
+				Expect(configs1).To(HaveLen(1))
+				Expect(configs2).To(HaveLen(1))
 				// Modify one and verify the other is unchanged
-				specs1[0].Config.Replacement = "modified"
-				Expect(specs2[0].Config.Replacement).To(Equal("warning"))
+				configs1[0].Replacement = "modified"
+				Expect(configs2[0].Replacement).To(Equal("warning"))
 			})
 		})
 	})
 
-	Describe("FindAlertRuleById with AlertRelabelConfig", func() {
-		Context("when alert rule has associated AlertRelabelConfig", func() {
-			It("should return both PrometheusRuleId and AlertRelabelConfigId", func() {
+	Describe("GetAlertRelabelConfigSpec with matching alerts", func() {
+		Context("when alert rule matches AlertRelabelConfig", func() {
+			It("should return matching configs from all AlertRelabelConfigs", func() {
 				By("creating and adding a PrometheusRule")
 				alertRule := monitoringv1.Rule{
 					Alert: "TestAlert",
 					Expr:  intstr.FromString("up == 0"),
+					Labels: map[string]string{
+						"severity": "critical",
+					},
 				}
 				pr := createPrometheusRule("test-namespace", "test-rule", []monitoringv1.Rule{alertRule})
 				mapperClient.AddPrometheusRule(pr)
 
-				By("creating and adding an AlertRelabelConfig for the same alert")
-				arc := &osmv1.AlertRelabelConfig{
+				By("creating and adding first AlertRelabelConfig")
+				arc1 := &osmv1.AlertRelabelConfig{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-arc",
+						Name:      "test-arc-1",
 						Namespace: "test-namespace",
 					},
 					Spec: osmv1.AlertRelabelConfigSpec{
@@ -764,27 +811,44 @@ var _ = Describe("Mapper", func() {
 								SourceLabels: []osmv1.LabelName{"alertname"},
 								Separator:    ";",
 								Regex:        "TestAlert",
-								TargetLabel:  "severity",
-								Replacement:  "critical",
+								TargetLabel:  "priority",
+								Replacement:  "high",
 								Action:       "Replace",
 							},
 						},
 					},
 				}
-				mapperClient.AddAlertRelabelConfig(arc)
+				mapperClient.AddAlertRelabelConfig(arc1)
 
-				By("finding the alert rule")
-				ruleId := mapperClient.GetAlertingRuleId(&alertRule)
-				prId, arcId, err := mapperClient.FindAlertRuleById(ruleId)
+				By("creating and adding second AlertRelabelConfig")
+				arc2 := &osmv1.AlertRelabelConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-arc-2",
+						Namespace: "test-namespace",
+					},
+					Spec: osmv1.AlertRelabelConfigSpec{
+						Configs: []osmv1.RelabelConfig{
+							{
+								SourceLabels: []osmv1.LabelName{"alertname", "severity"},
+								Separator:    ";",
+								Regex:        "TestAlert;critical",
+								TargetLabel:  "team",
+								Replacement:  "platform",
+								Action:       "Replace",
+							},
+						},
+					},
+				}
+				mapperClient.AddAlertRelabelConfig(arc2)
 
-				By("verifying both IDs are returned")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(prId).ToNot(BeNil())
-				Expect(prId.Namespace).To(Equal("test-namespace"))
-				Expect(prId.Name).To(Equal("test-rule"))
-				Expect(arcId).ToNot(BeNil())
-				Expect(arcId.Namespace).To(Equal("test-namespace"))
-				Expect(arcId.Name).To(Equal("test-arc"))
+				By("getting matching configs for the alert")
+				configs := mapperClient.GetAlertRelabelConfigSpec(&alertRule)
+
+				By("verifying both configs are returned")
+				Expect(configs).To(HaveLen(2))
+				// Verify first config
+				targetLabels := []string{configs[0].TargetLabel, configs[1].TargetLabel}
+				Expect(targetLabels).To(ContainElements("priority", "team"))
 			})
 		})
 	})

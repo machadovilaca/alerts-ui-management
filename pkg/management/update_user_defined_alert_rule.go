@@ -11,7 +11,7 @@ import (
 )
 
 func (c *client) UpdateUserDefinedAlertRule(ctx context.Context, alertRuleId string, alertRule monitoringv1.Rule) error {
-	prId, _, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
+	prId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
 	if err != nil {
 		return err
 	}

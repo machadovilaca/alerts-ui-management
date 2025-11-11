@@ -28,7 +28,7 @@ func main() {
 
 	mgmClient := management.New(ctx, client)
 
-	r := httprouter.New(client, mgmClient)
+	r := httprouter.New(mgmClient)
 
 	log.Println("listening on", listenAddr)
 	if err := http.ListenAndServe(listenAddr, r); err != nil {

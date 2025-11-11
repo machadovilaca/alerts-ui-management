@@ -27,18 +27,19 @@ func main() {
 
 	fmt.Println("Successfully connected to Kubernetes cluster!\n\n---")
 
-	d, err := client.PrometheusAlerts().GetActiveAlerts(ctx)
+	mgmClient := management.New(ctx, client)
+
+	d, err := mgmClient.GetAlerts(ctx, k8s.GetAlertsRequest{})
 	if err != nil {
-		log.Fatalf("Failed to get active alerts: %v", err)
+		log.Fatalf("Failed to get alerts: %v", err)
 	}
 
-	fmt.Printf("Found %d active alerts in the cluster:\n", len(d))
+	fmt.Printf("Found %d alerts in the cluster:\n", len(d))
 	for _, alert := range d {
-		fmt.Printf("Alert: %s, Severity: %s, State: %s, ActiveAt: %s\n", alert.Name, alert.Severity, alert.State, alert.ActiveAt)
+		fmt.Printf("Alert: %s, Severity: %s, State: %s, ActiveAt: %s\n", alert.Labels["alertname"], alert.Labels["severity"], alert.State, alert.ActiveAt)
 	}
 
 	fmt.Printf("\n\n---\nWatching for alert rules in '%s' namespace every 5 seconds...\n\n", namespace)
-	mgmClient := management.New(ctx, client)
 
 	for {
 		rules, err := mgmClient.ListRules(

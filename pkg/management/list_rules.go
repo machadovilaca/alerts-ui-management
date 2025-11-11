@@ -109,12 +109,12 @@ func (c *client) parseRule(rule monitoringv1.Rule) *monitoringv1.Rule {
 		return nil
 	}
 
-	_, arcId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
+	_, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
 	if err != nil {
 		return nil
 	}
 
-	rule, err = c.updateRuleBasedOnRelabelConfig(rule, arcId)
+	rule, err = c.updateRuleBasedOnRelabelConfig(&rule)
 	if err != nil {
 		return nil
 	}

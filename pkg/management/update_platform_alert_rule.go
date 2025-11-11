@@ -14,7 +14,7 @@ import (
 )
 
 func (c *client) UpdatePlatformAlertRule(ctx context.Context, alertRuleId string, alertRule monitoringv1.Rule) error {
-	prId, arcId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
+	prId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (c *client) UpdatePlatformAlertRule(ctx context.Context, alertRuleId string
 		return errors.New("no label changes detected; platform alert rules can only have labels updated")
 	}
 
-	return c.applyLabelChangesViaAlertRelabelConfig(ctx, arcId, prId, originalRule.Alert, labelChanges)
+	return c.applyLabelChangesViaAlertRelabelConfig(ctx, prId, originalRule.Alert, labelChanges)
 }
 
 func (c *client) getOriginalPlatformRule(ctx context.Context, prId *mapper.PrometheusRuleId, alertRuleId string) (*monitoringv1.Rule, error) {
@@ -87,17 +87,15 @@ func calculateLabelChanges(originalLabels, newLabels map[string]string) []labelC
 	return changes
 }
 
-func (c *client) applyLabelChangesViaAlertRelabelConfig(ctx context.Context, arcId *mapper.AlertRelabelConfigId, prId *mapper.PrometheusRuleId, alertName string, changes []labelChange) error {
-	var arc *osmv1.AlertRelabelConfig
-	var err error
+func (c *client) applyLabelChangesViaAlertRelabelConfig(ctx context.Context, prId *mapper.PrometheusRuleId, alertName string, changes []labelChange) error {
+	// Try to get existing AlertRelabelConfig by constructing its expected name
+	arcName := fmt.Sprintf("%s-%s-relabel", prId.Name, alertName)
+	arc, err := c.k8sClient.AlertRelabelConfigs().Get(ctx, prId.Namespace, arcName)
 
-	if arcId != nil {
-		arc, err = c.k8sClient.AlertRelabelConfigs().Get(ctx, arcId.Namespace, arcId.Name)
-		if err != nil {
-			return fmt.Errorf("failed to get AlertRelabelConfig %s/%s: %w", arcId.Namespace, arcId.Name, err)
-		}
-	} else {
-		arcName := fmt.Sprintf("%s-%s-relabel", prId.Name, alertName)
+	arcExists := err == nil
+
+	if !arcExists {
+		// Create new AlertRelabelConfig
 		arc = &osmv1.AlertRelabelConfig{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      arcName,
@@ -111,7 +109,7 @@ func (c *client) applyLabelChangesViaAlertRelabelConfig(ctx context.Context, arc
 
 	arc.Spec.Configs = c.buildRelabelConfigs(alertName, changes)
 
-	if arcId != nil {
+	if arcExists {
 		err = c.k8sClient.AlertRelabelConfigs().Update(ctx, *arc)
 		if err != nil {
 			return fmt.Errorf("failed to update AlertRelabelConfig %s/%s: %w", arc.Namespace, arc.Name, err)

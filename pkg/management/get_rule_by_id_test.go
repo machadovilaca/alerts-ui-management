@@ -83,11 +83,11 @@ var _ = Describe("GetRuleById", func() {
 			})
 
 			alertRuleId := "test-rule-id-2"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "monitoring",
 					Name:      "test-rules",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				if alertRule.Alert == "TestAlert2" {
@@ -109,8 +109,8 @@ var _ = Describe("GetRuleById", func() {
 
 		It("should return an error when the mapper cannot find the rule", func() {
 			alertRuleId := "nonexistent-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
-				return nil, nil, ErrAlertRuleNotFound
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
+				return nil, ErrAlertRuleNotFound
 			}
 
 			By("attempting to retrieve a nonexistent rule")
@@ -123,11 +123,11 @@ var _ = Describe("GetRuleById", func() {
 
 		It("should return an error when the PrometheusRule does not exist", func() {
 			alertRuleId := "test-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "monitoring",
 					Name:      "nonexistent-rule",
-				}, nil, nil
+				}, nil
 			}
 
 			By("attempting to retrieve a rule from a nonexistent PrometheusRule")
@@ -164,11 +164,11 @@ var _ = Describe("GetRuleById", func() {
 			})
 
 			alertRuleId := "nonexistent-rule-id"
-			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, *mapper.AlertRelabelConfigId, error) {
+			mockMapper.FindAlertRuleByIdFunc = func(id mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 				return &mapper.PrometheusRuleId{
 					Namespace: "monitoring",
 					Name:      "test-rules",
-				}, nil, nil
+				}, nil
 			}
 			mockMapper.GetAlertingRuleIdFunc = func(alertRule *monitoringv1.Rule) mapper.PrometheusAlertRuleId {
 				return mapper.PrometheusAlertRuleId("different-id")
