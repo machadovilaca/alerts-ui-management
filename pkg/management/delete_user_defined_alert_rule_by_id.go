@@ -13,11 +13,11 @@ import (
 func (c *client) DeleteUserDefinedAlertRuleById(ctx context.Context, alertRuleId string) error {
 	prId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
 	if err != nil {
-		return err
+		return NotFoundError{ID: alertRuleId}
 	}
 
 	if IsPlatformAlertRule(types.NamespacedName(*prId)) {
-		return fmt.Errorf("cannot delete alert rule from a platform-managed PrometheusRule")
+		return NotAllowedError{PrometheusRule: types.NamespacedName(*prId)}
 	}
 
 	pr, err := c.k8sClient.PrometheusRules().Get(ctx, prId.Namespace, prId.Name)
@@ -59,7 +59,7 @@ func (c *client) DeleteUserDefinedAlertRuleById(ctx context.Context, alertRuleId
 		return nil
 	}
 
-	return fmt.Errorf("alert rule with id %s not found", alertRuleId)
+	return NotFoundError{ID: alertRuleId}
 }
 
 func (c *client) filterRulesById(rules []monitoringv1.Rule, alertRuleId string, updated *bool) []monitoringv1.Rule {

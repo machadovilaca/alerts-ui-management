@@ -27,7 +27,7 @@ func (hr *httpRouter) GetAlerts(w http.ResponseWriter, req *http.Request) {
 	var params GetAlertsQueryParams
 
 	if err := form.NewDecoder().Decode(&params, req.URL.Query()); err != nil {
-		errorResponse(w, http.StatusBadRequest, "Invalid query parameters: "+err.Error())
+		writeError(w, http.StatusBadRequest, "Invalid query parameters: "+err.Error())
 		return
 	}
 
@@ -36,7 +36,7 @@ func (hr *httpRouter) GetAlerts(w http.ResponseWriter, req *http.Request) {
 		State:  params.State,
 	})
 	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, "Failed to get alerts: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Failed to get alerts: "+err.Error())
 		return
 	}
 
