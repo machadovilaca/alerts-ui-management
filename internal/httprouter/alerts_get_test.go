@@ -122,8 +122,7 @@ var _ = Describe("GetAlerts", func() {
 
 			By("verifying error response")
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
-			Expect(w.Body.String()).To(ContainSubstring("Failed to get alerts"))
-			Expect(w.Body.String()).To(ContainSubstring("connection error"))
+			Expect(w.Body.String()).To(ContainSubstring("An unexpected error occurred"))
 		})
 	})
 

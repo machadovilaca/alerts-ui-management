@@ -36,7 +36,7 @@ func (hr *httpRouter) GetAlerts(w http.ResponseWriter, req *http.Request) {
 		State:  params.State,
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get alerts: "+err.Error())
+		handleError(w, err)
 		return
 	}
 
