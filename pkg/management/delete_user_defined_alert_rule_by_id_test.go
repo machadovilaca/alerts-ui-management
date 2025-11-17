@@ -300,7 +300,7 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 
 			By("verifying error is returned")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("alert rule not found"))
+			Expect(err.Error()).To(ContainSubstring("AlertRule with id nonexistent-rule-id not found"))
 		})
 
 		It("should return error when trying to delete from platform-managed PrometheusRule", func() {
