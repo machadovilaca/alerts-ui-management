@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"fmt"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 
@@ -11,7 +12,7 @@ import (
 func (c *client) GetAlerts(ctx context.Context, req k8s.GetAlertsRequest) ([]k8s.PrometheusAlert, error) {
 	alerts, err := c.k8sClient.PrometheusAlerts().GetAlerts(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get alerts: %w", err)
 	}
 
 	var result []k8s.PrometheusAlert
