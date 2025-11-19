@@ -26,6 +26,7 @@ func New(managementClient management.Client) *chi.Mux {
 
 	r.Get("/api/v1/alerting/health", httpRouter.GetHealth)
 	r.Get("/api/v1/alerting/alerts", httpRouter.GetAlerts)
+	r.Post("/api/v1/alerting/rules", httpRouter.CreateUserDefinedAlertRule)
 	r.Delete("/api/v1/alerting/rules/{ruleId}", httpRouter.DeleteUserDefinedAlertRuleById)
 
 	return r
@@ -46,6 +47,16 @@ func handleError(w http.ResponseWriter, err error) {
 	var na *management.NotAllowedError
 	if errors.As(err, &na) {
 		writeError(w, http.StatusMethodNotAllowed, err.Error())
+		return
+	}
+	var ve *management.ValidationError
+	if errors.As(err, &ve) {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	var ce *management.ConflictError
+	if errors.As(err, &ce) {
+		writeError(w, http.StatusConflict, err.Error())
 		return
 	}
 	log.Printf("An unexpected error occurred: %v", err)
