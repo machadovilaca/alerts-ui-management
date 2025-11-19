@@ -93,7 +93,3 @@ curl --globoff "http://localhost:8080/api/v1/alerting/alerts?labels[severity]=wa
   ]
 }
 ```
-
-## Getting Started
-
-An automated demo script is available to showcase the library's capabilities with PrometheusRule and AlertRelabelConfig resources. See the [demo documentation](hack/examples/README.md) for detailed instructions and expected behavior.

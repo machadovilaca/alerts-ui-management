@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	osmv1 "github.com/openshift/api/monitoring/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -13,6 +14,8 @@ import (
 	"github.com/machadovilaca/alerts-ui-management/pkg/management/mapper"
 )
 
+const openshiftMonitoringNamespace = "openshift-monitoring"
+
 func (c *client) UpdatePlatformAlertRule(ctx context.Context, alertRuleId string, alertRule monitoringv1.Rule) error {
 	prId, err := c.mapper.FindAlertRuleById(mapper.PrometheusAlertRuleId(alertRuleId))
 	if err != nil {
@@ -20,7 +23,7 @@ func (c *client) UpdatePlatformAlertRule(ctx context.Context, alertRuleId string
 	}
 
 	if !IsPlatformAlertRule(types.NamespacedName(*prId)) {
-		return errors.New("cannot update non-platform alert rule")
+		return errors.New("cannot update non-platform alert rule from " + prId.Namespace + "/" + prId.Name)
 	}
 
 	originalRule, err := c.getOriginalPlatformRule(ctx, prId, alertRuleId)
@@ -33,13 +36,17 @@ func (c *client) UpdatePlatformAlertRule(ctx context.Context, alertRuleId string
 		return errors.New("no label changes detected; platform alert rules can only have labels updated")
 	}
 
-	return c.applyLabelChangesViaAlertRelabelConfig(ctx, prId, originalRule.Alert, labelChanges)
+	return c.applyLabelChangesViaAlertRelabelConfig(ctx, alertRuleId, originalRule.Alert, labelChanges)
 }
 
 func (c *client) getOriginalPlatformRule(ctx context.Context, prId *mapper.PrometheusRuleId, alertRuleId string) (*monitoringv1.Rule, error) {
-	pr, err := c.k8sClient.PrometheusRules().Get(ctx, prId.Namespace, prId.Name)
+	pr, found, err := c.k8sClient.PrometheusRules().Get(ctx, prId.Namespace, prId.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get PrometheusRule %s/%s: %w", prId.Namespace, prId.Name, err)
+	}
+
+	if !found {
+		return nil, &NotFoundError{Resource: "PrometheusRule", Id: fmt.Sprintf("%s/%s", prId.Namespace, prId.Name)}
 	}
 
 	for groupIdx := range pr.Spec.Groups {
@@ -76,6 +83,12 @@ func calculateLabelChanges(originalLabels, newLabels map[string]string) []labelC
 	}
 
 	for key := range originalLabels {
+		// alertname is a special label that is used to identify the alert rule
+		// and should not be dropped
+		if key == "alertname" {
+			continue
+		}
+
 		if _, exists := newLabels[key]; !exists {
 			changes = append(changes, labelChange{
 				action:      "LabelDrop",
@@ -87,34 +100,38 @@ func calculateLabelChanges(originalLabels, newLabels map[string]string) []labelC
 	return changes
 }
 
-func (c *client) applyLabelChangesViaAlertRelabelConfig(ctx context.Context, prId *mapper.PrometheusRuleId, alertName string, changes []labelChange) error {
-	// Try to get existing AlertRelabelConfig by constructing its expected name
-	arcName := fmt.Sprintf("%s-%s-relabel", prId.Name, alertName)
-	arc, err := c.k8sClient.AlertRelabelConfigs().Get(ctx, prId.Namespace, arcName)
+func (c *client) applyLabelChangesViaAlertRelabelConfig(ctx context.Context, alertRuleId string, alertName string, changes []labelChange) error {
+	arcName := fmt.Sprintf("alertmanagement-%s", strings.ToLower(strings.ReplaceAll(alertRuleId, "/", "-")))
 
-	arcExists := err == nil
-
-	if !arcExists {
-		// Create new AlertRelabelConfig
-		arc = &osmv1.AlertRelabelConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      arcName,
-				Namespace: prId.Namespace,
-			},
-			Spec: osmv1.AlertRelabelConfigSpec{
-				Configs: []osmv1.RelabelConfig{},
-			},
-		}
+	existingArc, found, err := c.k8sClient.AlertRelabelConfigs().Get(ctx, openshiftMonitoringNamespace, arcName)
+	if err != nil {
+		return fmt.Errorf("failed to get AlertRelabelConfig %s/%s: %w", openshiftMonitoringNamespace, arcName, err)
 	}
 
-	arc.Spec.Configs = c.buildRelabelConfigs(alertName, changes)
+	relabelConfigs := c.buildRelabelConfigs(alertName, changes)
 
-	if arcExists {
+	var arc *osmv1.AlertRelabelConfig
+	if found {
+		arc = existingArc
+		arc.Spec = osmv1.AlertRelabelConfigSpec{
+			Configs: relabelConfigs,
+		}
+
 		err = c.k8sClient.AlertRelabelConfigs().Update(ctx, *arc)
 		if err != nil {
 			return fmt.Errorf("failed to update AlertRelabelConfig %s/%s: %w", arc.Namespace, arc.Name, err)
 		}
 	} else {
+		arc = &osmv1.AlertRelabelConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      arcName,
+				Namespace: openshiftMonitoringNamespace,
+			},
+			Spec: osmv1.AlertRelabelConfigSpec{
+				Configs: relabelConfigs,
+			},
+		}
+
 		_, err = c.k8sClient.AlertRelabelConfigs().Create(ctx, *arc)
 		if err != nil {
 			return fmt.Errorf("failed to create AlertRelabelConfig %s/%s: %w", arc.Namespace, arc.Name, err)

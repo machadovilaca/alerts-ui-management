@@ -15,5 +15,5 @@ type client struct {
 }
 
 func IsPlatformAlertRule(prId types.NamespacedName) bool {
-	return strings.HasPrefix(prId.Name, "openshift-")
+	return strings.HasPrefix(prId.Namespace, "openshift-")
 }

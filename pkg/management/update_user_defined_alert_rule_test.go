@@ -92,7 +92,8 @@ var _ = Describe("UpdateUserDefinedAlertRule", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying the update succeeded")
-			updatedPR, err := mockPR.Get(ctx, "user-namespace", "user-rule")
+			updatedPR, found, err := mockPR.Get(ctx, "user-namespace", "user-rule")
+			Expect(found).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updatedPR.Spec.Groups).To(HaveLen(1))
 			Expect(updatedPR.Spec.Groups[0].Rules).To(HaveLen(1))
@@ -165,7 +166,8 @@ var _ = Describe("UpdateUserDefinedAlertRule", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying only the targeted rule was updated")
-			updatedPR, err := mockPR.Get(ctx, "user-namespace", "multi-rule")
+			updatedPR, found, err := mockPR.Get(ctx, "user-namespace", "multi-rule")
+			Expect(found).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updatedPR.Spec.Groups).To(HaveLen(2))
 

@@ -111,7 +111,7 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 
 			arc := arcs[0]
 			Expect(arc.Namespace).To(Equal("openshift-monitoring"))
-			Expect(arc.Name).To(Equal("openshift-platform-alerts-PlatformAlert-relabel"))
+			Expect(arc.Name).To(Equal("alertmanagement-test-platform-rule-id"))
 
 			By("verifying relabel configs include label updates with alertname matching")
 			Expect(arc.Spec.Configs).To(HaveLen(2))
@@ -163,7 +163,7 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 
 			existingARC := &osmv1.AlertRelabelConfig{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "openshift-platform-alerts-PlatformAlert-relabel",
+					Name:      "test-platform-rule-id-relabel",
 					Namespace: "openshift-monitoring",
 				},
 				Spec: osmv1.AlertRelabelConfigSpec{
@@ -181,7 +181,7 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 				"openshift-monitoring/openshift-platform-alerts": prometheusRule,
 			})
 			mockARC.SetAlertRelabelConfigs(map[string]*osmv1.AlertRelabelConfig{
-				"openshift-monitoring/openshift-platform-alerts-PlatformAlert-relabel": existingARC,
+				"openshift-monitoring/alertmanagement-test-platform-rule-id": existingARC,
 			})
 
 			alertRuleId := "test-platform-rule-id"
@@ -211,7 +211,8 @@ var _ = Describe("UpdatePlatformAlertRule", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying existing AlertRelabelConfig was updated")
-			arc, err := mockARC.Get(ctx, "openshift-monitoring", "openshift-platform-alerts-PlatformAlert-relabel")
+			arc, found, err := mockARC.Get(ctx, "openshift-monitoring", "alertmanagement-test-platform-rule-id")
+			Expect(found).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(arc.Spec.Configs).To(HaveLen(1))
 			Expect(arc.Spec.Configs[0].Action).To(Equal("Replace"))

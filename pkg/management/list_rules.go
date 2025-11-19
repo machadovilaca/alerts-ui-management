@@ -11,6 +11,8 @@ import (
 	"github.com/machadovilaca/alerts-ui-management/pkg/management/mapper"
 )
 
+const alertRuleIdLabel = "alert_rule_id"
+
 func (c *client) ListRules(ctx context.Context, prOptions PrometheusRuleOptions, arOptions AlertRuleOptions) ([]monitoringv1.Rule, error) {
 	if prOptions.Name != "" && prOptions.Namespace == "" {
 		return nil, errors.New("PrometheusRule Namespace must be specified when Name is provided")
@@ -18,9 +20,12 @@ func (c *client) ListRules(ctx context.Context, prOptions PrometheusRuleOptions,
 
 	// Name and Namespace specified
 	if prOptions.Name != "" && prOptions.Namespace != "" {
-		pr, err := c.k8sClient.PrometheusRules().Get(ctx, prOptions.Namespace, prOptions.Name)
+		pr, found, err := c.k8sClient.PrometheusRules().Get(ctx, prOptions.Namespace, prOptions.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get PrometheusRule %s/%s: %w", prOptions.Namespace, prOptions.Name, err)
+		}
+		if !found {
+			return nil, &NotFoundError{Resource: "PrometheusRule", Id: fmt.Sprintf("%s/%s", prOptions.Namespace, prOptions.Name)}
 		}
 		return c.extractAndFilterRules(*pr, &prOptions, &arOptions), nil
 	}
@@ -118,6 +123,11 @@ func (c *client) parseRule(rule monitoringv1.Rule) *monitoringv1.Rule {
 	if err != nil {
 		return nil
 	}
+
+	if rule.Labels == nil {
+		rule.Labels = make(map[string]string)
+	}
+	rule.Labels[alertRuleIdLabel] = string(alertRuleId)
 
 	return &rule
 }

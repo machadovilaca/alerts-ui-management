@@ -287,16 +287,16 @@ var _ = Describe("CreateUserDefinedAlertRule", func() {
 			Expect(addRuleCalled).To(BeTrue())
 		})
 
-		It("should handle PrometheusRule names starting with 'openshift-' in any namespace", func() {
-			By("setting up test data with openshift- prefix in non-monitoring namespace")
+		It("should reject PrometheusRules in openshift- prefixed namespaces", func() {
+			By("setting up test data with openshift- namespace prefix")
 			alertRule := monitoringv1.Rule{
 				Alert: "TestAlert",
 				Expr:  intstr.FromString("up == 0"),
 			}
 
 			prOptions := management.PrometheusRuleOptions{
-				Name:      "openshift-custom",
-				Namespace: "user-namespace",
+				Name:      "custom-rule",
+				Namespace: "openshift-user-namespace",
 			}
 
 			By("attempting to create the alert rule")

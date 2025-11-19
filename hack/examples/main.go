@@ -6,16 +6,15 @@ import (
 	"log"
 	"time"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+
 	"github.com/machadovilaca/alerts-ui-management/pkg/k8s"
 	"github.com/machadovilaca/alerts-ui-management/pkg/management"
 )
 
-const namespace = "default"
-
 func main() {
 	ctx := context.Background()
 
-	// Create a new Kubernetes client (tries kubeconfig first, then in-cluster)
 	client, err := k8s.NewClient(ctx, k8s.ClientOptions{})
 	if err != nil {
 		log.Fatalf("Failed to create Kubernetes client: %v", err)
@@ -25,37 +24,48 @@ func main() {
 		log.Fatalf("Failed to connect to cluster: %v", err)
 	}
 
-	fmt.Println("Successfully connected to Kubernetes cluster!\n\n---")
-
 	mgmClient := management.New(ctx, client)
 
-	d, err := mgmClient.GetAlerts(ctx, k8s.GetAlertsRequest{})
+	// wait for 5 seconds to ensure all PrometheusRules are updated
+	for i := 0; i < 5; i++ {
+		fmt.Println("Waiting for PrometheusRules to be updated...")
+		time.Sleep(1 * time.Second)
+	}
+
+	rules, err := mgmClient.ListRules(ctx, management.PrometheusRuleOptions{Namespace: "openshift-monitoring"}, management.AlertRuleOptions{})
 	if err != nil {
-		log.Fatalf("Failed to get alerts: %v", err)
+		log.Fatalf("Failed to list rules: %v", err)
+	}
+	fmt.Println("Rules:", len(rules))
+	for _, rule := range rules {
+		fmt.Printf("- %s: %+v\n", rule.Alert, rule.Labels)
 	}
 
-	fmt.Printf("Found %d alerts in the cluster:\n", len(d))
-	for _, alert := range d {
-		fmt.Printf("Alert: %s, Severity: %s, State: %s, ActiveAt: %s\n", alert.Labels["alertname"], alert.Labels["severity"], alert.State, alert.ActiveAt)
+	alertRuleId := "AlertmanagerReceiversNotConfigured/f964c895e3c8eb806c0326742d875051af437ea4c4edaf8c89306317290bf8f1"
+	alertRule := monitoringv1.Rule{
+		Alert: "AlertmanagerReceiversNotConfigured",
+		Labels: map[string]string{
+			"namespace": "openshift-monitoring",
+			"severity":  "info",
+		},
 	}
 
-	fmt.Printf("\n\n---\nWatching for alert rules in '%s' namespace every 5 seconds...\n\n", namespace)
+	err = mgmClient.UpdatePlatformAlertRule(ctx, alertRuleId, alertRule)
+	if err != nil {
+		log.Fatalf("Failed to update platform alert rule: %v", err)
+	}
+
+	fmt.Println("Platform alert rule updated successfully")
 
 	for {
-		rules, err := mgmClient.ListRules(
-			ctx,
-			management.PrometheusRuleOptions{Namespace: namespace},
-			management.AlertRuleOptions{},
-		)
+		alerts, err := mgmClient.GetAlerts(ctx, k8s.GetAlertsRequest{})
 		if err != nil {
-			log.Fatalf("Failed to list alert rules: %v", err)
+			log.Fatalf("Failed to get alerts: %v", err)
 		}
-
-		fmt.Printf("Found %d alert rules in '%s' namespace:\n", len(rules), namespace)
-		for _, rule := range rules {
-			fmt.Printf("- %s: %s\n", rule.Alert, rule.Labels["severity"])
+		fmt.Println("\n\nAlerts:", len(alerts))
+		for _, alert := range alerts {
+			fmt.Printf("- %s: %+v\n", alert.Labels["alertname"], alert.Labels)
 		}
-
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }

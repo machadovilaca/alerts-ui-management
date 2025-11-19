@@ -20,9 +20,13 @@ func (c *client) DeleteUserDefinedAlertRuleById(ctx context.Context, alertRuleId
 		return &NotAllowedError{Message: "cannot delete alert rule from a platform-managed PrometheusRule"}
 	}
 
-	pr, err := c.k8sClient.PrometheusRules().Get(ctx, prId.Namespace, prId.Name)
+	pr, found, err := c.k8sClient.PrometheusRules().Get(ctx, prId.Namespace, prId.Name)
 	if err != nil {
 		return err
+	}
+
+	if !found {
+		return &NotFoundError{Resource: "PrometheusRule", Id: fmt.Sprintf("%s/%s", prId.Namespace, prId.Name)}
 	}
 
 	updated := false

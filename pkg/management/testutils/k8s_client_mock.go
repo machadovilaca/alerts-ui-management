@@ -2,7 +2,6 @@ package testutils
 
 import (
 	"context"
-	"errors"
 
 	osmv1 "github.com/openshift/api/monitoring/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -96,7 +95,7 @@ func (m *MockPrometheusAlertsInterface) GetAlerts(ctx context.Context, req k8s.G
 // MockPrometheusRuleInterface is a mock implementation of k8s.PrometheusRuleInterface
 type MockPrometheusRuleInterface struct {
 	ListFunc    func(ctx context.Context, namespace string) ([]monitoringv1.PrometheusRule, error)
-	GetFunc     func(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error)
+	GetFunc     func(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, bool, error)
 	UpdateFunc  func(ctx context.Context, pr monitoringv1.PrometheusRule) error
 	DeleteFunc  func(ctx context.Context, namespace string, name string) error
 	AddRuleFunc func(ctx context.Context, namespacedName types.NamespacedName, groupName string, rule monitoringv1.Rule) error
@@ -127,7 +126,7 @@ func (m *MockPrometheusRuleInterface) List(ctx context.Context, namespace string
 }
 
 // Get mocks the Get method
-func (m *MockPrometheusRuleInterface) Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error) {
+func (m *MockPrometheusRuleInterface) Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, bool, error) {
 	if m.GetFunc != nil {
 		return m.GetFunc(ctx, namespace, name)
 	}
@@ -135,10 +134,11 @@ func (m *MockPrometheusRuleInterface) Get(ctx context.Context, namespace string,
 	key := namespace + "/" + name
 	if m.PrometheusRules != nil {
 		if rule, exists := m.PrometheusRules[key]; exists {
-			return rule, nil
+			return rule, true, nil
 		}
 	}
-	return nil, errors.New("PrometheusRule not found")
+
+	return nil, false, nil
 }
 
 // Update mocks the Update method
@@ -233,7 +233,7 @@ func (m *MockPrometheusRuleInformerInterface) Run(ctx context.Context, callbacks
 // MockAlertRelabelConfigInterface is a mock implementation of k8s.AlertRelabelConfigInterface
 type MockAlertRelabelConfigInterface struct {
 	ListFunc   func(ctx context.Context, namespace string) ([]osmv1.AlertRelabelConfig, error)
-	GetFunc    func(ctx context.Context, namespace string, name string) (*osmv1.AlertRelabelConfig, error)
+	GetFunc    func(ctx context.Context, namespace string, name string) (*osmv1.AlertRelabelConfig, bool, error)
 	CreateFunc func(ctx context.Context, arc osmv1.AlertRelabelConfig) (*osmv1.AlertRelabelConfig, error)
 	UpdateFunc func(ctx context.Context, arc osmv1.AlertRelabelConfig) error
 	DeleteFunc func(ctx context.Context, namespace string, name string) error
@@ -264,7 +264,7 @@ func (m *MockAlertRelabelConfigInterface) List(ctx context.Context, namespace st
 }
 
 // Get mocks the Get method
-func (m *MockAlertRelabelConfigInterface) Get(ctx context.Context, namespace string, name string) (*osmv1.AlertRelabelConfig, error) {
+func (m *MockAlertRelabelConfigInterface) Get(ctx context.Context, namespace string, name string) (*osmv1.AlertRelabelConfig, bool, error) {
 	if m.GetFunc != nil {
 		return m.GetFunc(ctx, namespace, name)
 	}
@@ -272,10 +272,11 @@ func (m *MockAlertRelabelConfigInterface) Get(ctx context.Context, namespace str
 	key := namespace + "/" + name
 	if m.AlertRelabelConfigs != nil {
 		if config, exists := m.AlertRelabelConfigs[key]; exists {
-			return config, nil
+			return config, true, nil
 		}
 	}
-	return nil, errors.New("AlertRelabelConfig not found")
+
+	return nil, false, nil
 }
 
 // Create mocks the Create method
