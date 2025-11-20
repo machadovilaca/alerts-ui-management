@@ -98,8 +98,9 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying PrometheusRule was updated, not deleted")
-			updatedPR, err := mockPR.Get(ctx, "test-namespace", "multi-rule")
+			updatedPR, found, err := mockPR.Get(ctx, "test-namespace", "multi-rule")
 			Expect(err).ToNot(HaveOccurred())
+			Expect(found).To(BeTrue())
 			Expect(updatedPR.Spec.Groups).To(HaveLen(2))
 			Expect(updatedPR.Spec.Groups[0].Rules).To(HaveLen(1))
 			Expect(updatedPR.Spec.Groups[0].Rules[0].Alert).To(Equal("Alert1"))
@@ -217,7 +218,8 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying group2 was removed and group1 remains")
-			updatedPR, err := mockPR.Get(ctx, "test-namespace", "multi-group")
+			updatedPR, found, err := mockPR.Get(ctx, "test-namespace", "multi-group")
+			Expect(found).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updatedPR.Spec.Groups).To(HaveLen(1))
 			Expect(updatedPR.Spec.Groups[0].Name).To(Equal("group1"))
@@ -280,7 +282,8 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying only the exact matching rule was deleted")
-			updatedPR, err := mockPR.Get(ctx, "test-namespace", "similar-rules")
+			updatedPR, found, err := mockPR.Get(ctx, "test-namespace", "similar-rules")
+			Expect(found).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updatedPR.Spec.Groups[0].Rules).To(HaveLen(1))
 			Expect(updatedPR.Spec.Groups[0].Rules[0].Labels["severity"]).To(Equal("critical"))
@@ -331,8 +334,8 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 				}, nil
 			}
 
-			mockPR.GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, error) {
-				return nil, errors.New("failed to get PrometheusRule")
+			mockPR.GetFunc = func(ctx context.Context, namespace, name string) (*monitoringv1.PrometheusRule, bool, error) {
+				return nil, false, errors.New("failed to get PrometheusRule")
 			}
 
 			By("attempting to delete the rule")
@@ -513,7 +516,8 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying middle group was removed")
-			updatedPR, err := mockPR.Get(ctx, "test-namespace", "multi-group")
+			updatedPR, found, err := mockPR.Get(ctx, "test-namespace", "multi-group")
+			Expect(found).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updatedPR.Spec.Groups).To(HaveLen(2))
 			Expect(updatedPR.Spec.Groups[0].Name).To(Equal("group1"))

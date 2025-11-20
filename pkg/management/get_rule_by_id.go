@@ -15,9 +15,13 @@ func (c *client) GetRuleById(ctx context.Context, alertRuleId string) (monitorin
 		return monitoringv1.Rule{}, err
 	}
 
-	pr, err := c.k8sClient.PrometheusRules().Get(ctx, prId.Namespace, prId.Name)
+	pr, found, err := c.k8sClient.PrometheusRules().Get(ctx, prId.Namespace, prId.Name)
 	if err != nil {
 		return monitoringv1.Rule{}, err
+	}
+
+	if !found {
+		return monitoringv1.Rule{}, &NotFoundError{Resource: "PrometheusRule", Id: fmt.Sprintf("%s/%s", prId.Namespace, prId.Name)}
 	}
 
 	var rule *monitoringv1.Rule

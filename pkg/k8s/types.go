@@ -48,7 +48,7 @@ type PrometheusRuleInterface interface {
 	List(ctx context.Context, namespace string) ([]monitoringv1.PrometheusRule, error)
 
 	// Get retrieves a PrometheusRule by namespace and name
-	Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, error)
+	Get(ctx context.Context, namespace string, name string) (*monitoringv1.PrometheusRule, bool, error)
 
 	// Update updates an existing PrometheusRule
 	Update(ctx context.Context, pr monitoringv1.PrometheusRule) error
@@ -84,7 +84,7 @@ type AlertRelabelConfigInterface interface {
 	List(ctx context.Context, namespace string) ([]osmv1.AlertRelabelConfig, error)
 
 	// Get retrieves an AlertRelabelConfig by namespace and name
-	Get(ctx context.Context, namespace string, name string) (*osmv1.AlertRelabelConfig, error)
+	Get(ctx context.Context, namespace string, name string) (*osmv1.AlertRelabelConfig, bool, error)
 
 	// Create creates a new AlertRelabelConfig
 	Create(ctx context.Context, arc osmv1.AlertRelabelConfig) (*osmv1.AlertRelabelConfig, error)

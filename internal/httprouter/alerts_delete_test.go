@@ -42,8 +42,8 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 		}
 
 		platformPR := monitoringv1.PrometheusRule{}
-		platformPR.Name = "openshift-platform-pr"
-		platformPR.Namespace = "default"
+		platformPR.Name = "platform-pr"
+		platformPR.Namespace = "openshift-monitoring"
 		platformPR.Spec.Groups = []monitoringv1.RuleGroup{
 			{
 				Name:  "pg1",
@@ -52,8 +52,8 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 		}
 
 		mockK8sRules.SetPrometheusRules(map[string]*monitoringv1.PrometheusRule{
-			"default/user-pr":               &userPR,
-			"default/openshift-platform-pr": &platformPR,
+			"default/user-pr":                  &userPR,
+			"openshift-monitoring/platform-pr": &platformPR,
 		})
 
 		mockK8s = &testutils.MockClient{
@@ -101,7 +101,8 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 
-			pr, err := mockK8sRules.Get(context.Background(), "default", "user-pr")
+			pr, found, err := mockK8sRules.Get(context.Background(), "default", "user-pr")
+			Expect(found).To(BeTrue())
 			Expect(err).NotTo(HaveOccurred())
 			ruleNames := []string{}
 			for _, g := range pr.Spec.Groups {
@@ -141,8 +142,8 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 				},
 				FindAlertRuleByIdFunc: func(alertRuleId mapper.PrometheusAlertRuleId) (*mapper.PrometheusRuleId, error) {
 					pr := mapper.PrometheusRuleId{
-						Namespace: "default",
-						Name:      "openshift-platform-pr",
+						Namespace: "openshift-monitoring",
+						Name:      "platform-pr",
 					}
 					return &pr, nil
 				},
@@ -158,9 +159,9 @@ var _ = Describe("DeleteUserDefinedAlertRuleById", func() {
 			Expect(w.Code).To(Equal(http.StatusMethodNotAllowed))
 			Expect(w.Body.String()).To(ContainSubstring("cannot delete alert rule from a platform-managed PrometheusRule"))
 
-			pr, err := mockK8sRules.Get(context.Background(), "default", "openshift-platform-pr")
+			pr, found, err := mockK8sRules.Get(context.Background(), "openshift-monitoring", "platform-pr")
+			Expect(found).To(BeTrue())
 			Expect(err).NotTo(HaveOccurred())
-			found := false
 			for _, g := range pr.Spec.Groups {
 				for _, r := range g.Rules {
 					if r.Alert == "p1" {
