@@ -26,6 +26,7 @@ func New(managementClient management.Client) *chi.Mux {
 
 	r.Get("/api/v1/alerting/health", httpRouter.GetHealth)
 	r.Get("/api/v1/alerting/alerts", httpRouter.GetAlerts)
+	r.Delete("/api/v1/alerting/rules", httpRouter.BulkDeleteUserDefinedAlertRules)
 	r.Delete("/api/v1/alerting/rules/{ruleId}", httpRouter.DeleteUserDefinedAlertRuleById)
 
 	return r
@@ -38,22 +39,24 @@ func writeError(w http.ResponseWriter, statusCode int, message string) {
 }
 
 func handleError(w http.ResponseWriter, err error) {
+	status, message := parseError(err)
+	writeError(w, status, message)
+}
+
+func parseError(err error) (int, string) {
 	var nf *management.NotFoundError
 	if errors.As(err, &nf) {
-		writeError(w, http.StatusNotFound, err.Error())
-		return
+		return http.StatusNotFound, err.Error()
 	}
 	var na *management.NotAllowedError
 	if errors.As(err, &na) {
-		writeError(w, http.StatusMethodNotAllowed, err.Error())
-		return
+		return http.StatusMethodNotAllowed, err.Error()
 	}
 	log.Printf("An unexpected error occurred: %v", err)
-	writeError(w, http.StatusInternalServerError, "An unexpected error occurred")
+	return http.StatusInternalServerError, "An unexpected error occurred"
 }
 
-func getParam(r *http.Request, name string) (string, error) {
-	raw := chi.URLParam(r, name)
+func parseParam(raw string, name string) (string, error) {
 	decoded, err := url.PathUnescape(raw)
 	if err != nil {
 		return "", fmt.Errorf("invalid %s encoding", name)
@@ -63,4 +66,9 @@ func getParam(r *http.Request, name string) (string, error) {
 		return "", fmt.Errorf("missing %s", name)
 	}
 	return value, nil
+}
+
+func getParam(r *http.Request, name string) (string, error) {
+	raw := chi.URLParam(r, name)
+	return parseParam(raw, name)
 }
