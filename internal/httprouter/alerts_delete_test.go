@@ -196,8 +196,8 @@ var _ = Describe("BulkDeleteUserDefinedAlertRules", func() {
 		}
 
 		platformPR := monitoringv1.PrometheusRule{}
-		platformPR.Name = "openshift-platform-pr"
-		platformPR.Namespace = "default"
+		platformPR.Name = "platform-pr"
+		platformPR.Namespace = "openshift-monitoring"
 		platformPR.Spec.Groups = []monitoringv1.RuleGroup{
 			{
 				Name:  "pg1",
@@ -206,8 +206,8 @@ var _ = Describe("BulkDeleteUserDefinedAlertRules", func() {
 		}
 
 		mockK8sRules.SetPrometheusRules(map[string]*monitoringv1.PrometheusRule{
-			"default/user-pr":               &userPR,
-			"default/openshift-platform-pr": &platformPR,
+			"default/user-pr":                  &userPR,
+			"openshift-monitoring/platform-pr": &platformPR,
 		})
 
 		mockK8s = &testutils.MockClient{
@@ -227,7 +227,8 @@ var _ = Describe("BulkDeleteUserDefinedAlertRules", func() {
 					Name:      "user-pr",
 				}
 				if id == "platform1" {
-					pr.Name = "openshift-platform-pr"
+					pr.Namespace = "openshift-monitoring"
+					pr.Name = "platform-pr"
 				}
 				return &pr, nil
 			},
@@ -268,8 +269,9 @@ var _ = Describe("BulkDeleteUserDefinedAlertRules", func() {
 			Expect(resp.Rules[2].StatusCode).To(Equal(http.StatusBadRequest))
 			Expect(resp.Rules[2].Message).To(ContainSubstring("missing ruleId"))
 
-			prUser, err := mockK8sRules.Get(context.Background(), "default", "user-pr")
+			prUser, found, err := mockK8sRules.Get(context.Background(), "default", "user-pr")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(found).To(BeTrue())
 			userRuleNames := []string{}
 			for _, g := range prUser.Spec.Groups {
 				for _, r := range g.Rules {
@@ -279,8 +281,9 @@ var _ = Describe("BulkDeleteUserDefinedAlertRules", func() {
 			Expect(userRuleNames).NotTo(ContainElement("u1"))
 			Expect(userRuleNames).To(ContainElement("u2"))
 
-			prPlatform, err := mockK8sRules.Get(context.Background(), "default", "openshift-platform-pr")
+			prPlatform, found, err := mockK8sRules.Get(context.Background(), "openshift-monitoring", "platform-pr")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(found).To(BeTrue())
 			foundPlatform := false
 			for _, g := range prPlatform.Spec.Groups {
 				for _, r := range g.Rules {
@@ -316,8 +319,9 @@ var _ = Describe("BulkDeleteUserDefinedAlertRules", func() {
 			Expect(resp.Rules[1].Message).To(ContainSubstring("cannot delete alert rule from a platform-managed PrometheusRule"))
 
 			// Ensure only user rule was removed
-			prUser, err := mockK8sRules.Get(context.Background(), "default", "user-pr")
+			prUser, found, err := mockK8sRules.Get(context.Background(), "default", "user-pr")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(found).To(BeTrue())
 			userRuleNames := []string{}
 			for _, g := range prUser.Spec.Groups {
 				for _, r := range g.Rules {
@@ -328,8 +332,9 @@ var _ = Describe("BulkDeleteUserDefinedAlertRules", func() {
 			Expect(userRuleNames).To(ContainElement("u2"))
 
 			// Platform rule remains intact
-			prPlatform, err := mockK8sRules.Get(context.Background(), "default", "openshift-platform-pr")
+			prPlatform, found, err := mockK8sRules.Get(context.Background(), "openshift-monitoring", "platform-pr")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(found).To(BeTrue())
 			foundPlatform := false
 			for _, g := range prPlatform.Spec.Groups {
 				for _, r := range g.Rules {
@@ -364,12 +369,14 @@ var _ = Describe("BulkDeleteUserDefinedAlertRules", func() {
 			Expect(resp.Rules[1].StatusCode).To(Equal(http.StatusNoContent))
 
 			// User PrometheusRule should be deleted after removing the last rule
-			_, err := mockK8sRules.Get(context.Background(), "default", "user-pr")
-			Expect(err).To(HaveOccurred())
+			_, found, err := mockK8sRules.Get(context.Background(), "default", "user-pr")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(found).To(BeFalse())
 
 			// Platform PrometheusRule remains present
-			_, err = mockK8sRules.Get(context.Background(), "default", "openshift-platform-pr")
+			_, found, err = mockK8sRules.Get(context.Background(), "openshift-monitoring", "platform-pr")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(found).To(BeTrue())
 		})
 	})
 
